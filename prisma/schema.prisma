@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Rental company tenants. Each company can add and manage their own DNR entries.
+model Company {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  email           String        @unique
+  phone           String?
+  city            String?
+  state           String?
+  passwordHash    String
+  verified        Boolean       @default(false)
+  isAdmin         Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  entries         DnrEntry[]    @relation("EntryCreator")
+  reports         Report[]
+  searchLogs      SearchLog[]
+  auditEvents     AuditEvent[]
+}
+
+// Core record. One row per person flagged on the do-not-rent list.
+// fullName + licenseId are the two primary search keys.
+model DnrEntry {
+  id              String        @id @default(cuid())
+
+  // Identity (the two primary search keys)
+  fullName        String
+  fullNameNorm    String        // normalized lowercase, alphanumeric-only — fast LIKE search
+  firstName       String?
+  middleName      String?
+  lastName        String?
+  aliases         String?       // JSON-encoded array of alternate spellings
+
+  licenseId       String?       // captured separately so it can be searched directly
+  licenseIdNorm   String?       // normalized: alphanumeric-only, uppercase
+  licenseState    String?       // two-letter state/province code
+  licenseExpiry   DateTime?
+  dateOfBirth     DateTime?
+
+  // Status: ACTIVE | ARCHIVED | REFORMED | DISPUTED
+  status          String        @default("ACTIVE")
+  // Severity: LOW | MEDIUM | HIGH | CRITICAL
+  severity        String        @default("MEDIUM")
+
+  // Incident summary (denormalized for fast list rendering / search snippets)
+  primaryReason   String        // short one-liner reason
+  detailedNotes   String?       // long-form description
+  damageAmount    Float?        // total $ damages claimed
+  incidentDate    DateTime?
+  incidentCity    String?
+  incidentState   String?
+
+  // Provenance
+  sourceUrl       String?       // e.g. supremesportrental original URL
+  importedFrom    String?       // "supremesportrental.com" for seeded entries
+  createdById     String?
+  createdBy       Company?      @relation("EntryCreator", fields: [createdById], references: [id])
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  categories      EntryCategory[]
+  photos          Photo[]
+  reasons         Reason[]
+  reports         Report[]
+  disputes        Dispute[]
+
+  @@index([fullNameNorm])
+  @@index([licenseIdNorm])
+  @@index([lastName])
+  @@index([status])
+}
+
+// Many-to-many: each entry can be tagged with multiple violation categories.
+// Lets searchers filter by "vehicle theft", "nonpayment", etc.
+model Category {
+  id        String           @id @default(cuid())
+  slug      String           @unique
+  label     String
+  entries   EntryCategory[]
+}
+
+model EntryCategory {
+  entryId    String
+  categoryId String
+  entry      DnrEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@id([entryId, categoryId])
+  @@index([categoryId])
+}
+
+// Photos: license front, license back, vehicle damage, etc.
+// One entry can have many photos.
+model Photo {
+  id        String     @id @default(cuid())
+  entryId   String
+  entry     DnrEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  url       String     // public URL or /uploads/... path
+  // PhotoKind: LICENSE_FRONT | LICENSE_BACK | PERSON | DAMAGE | DOCUMENT | OTHER
+  kind      String     @default("LICENSE_FRONT")
+  caption   String?
+  createdAt DateTime   @default(now())
+}
+
+// Granular reasons — separate from the primary one-liner so multiple incidents per entry
+// can be listed as a checklist. Searchable via full-text on `text`.
+model Reason {
+  id        String   @id @default(cuid())
+  entryId   String
+  entry    DnrEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  text      String
+  amount    Float?
+  occurredAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([entryId])
+}
+
+// A company endorsing/corroborating an existing entry — adds weight to a record.
+model Report {
+  id              String   @id @default(cuid())
+  entryId         String
+  entry           DnrEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  reportingCoId   String
+  reportingCo     Company  @relation(fields: [reportingCoId], references: [id], onDelete: Cascade)
+  description     String
+  evidenceUrls    String?  // JSON array
+  incidentDate    DateTime?
+  createdAt       DateTime @default(now())
+  @@unique([entryId, reportingCoId])
+}
+
+// People can dispute being on the list. Companies/admins review.
+model Dispute {
+  id        String         @id @default(cuid())
+  entryId   String
+  entry     DnrEntry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  filerName String
+  filerContact String
+  reason    String
+  // DisputeStatus: OPEN | IN_REVIEW | RESOLVED | REJECTED
+  status    String         @default("OPEN")
+  createdAt DateTime       @default(now())
+  resolvedAt DateTime?
+  resolution String?
+}
+
+// Search analytics — what people are looking up.
+model SearchLog {
+  id          String   @id @default(cuid())
+  query       String
+  field       String   // "name" | "license" | "any"
+  resultsCount Int
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  ip          String?
+  createdAt   DateTime @default(now())
+  @@index([createdAt])
+}
+
+// Tamper-evident log of mutations for trust.
+model AuditEvent {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     Company? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  target    String
+  metadata  String?  // JSON
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+

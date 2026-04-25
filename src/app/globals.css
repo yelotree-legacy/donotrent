@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body {
+  background: #0a0a0a;
+  color: #e5e5e5;
+  min-height: 100vh;
+}
+
+body {
+  font-feature-settings: "ss01", "cv11";
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-red-700 active:bg-red-800;
+  }
+  .btn-ghost {
+    @apply btn border border-ink-700 bg-ink-900 text-neutral-200 hover:bg-ink-800;
+  }
+  .btn-link {
+    @apply text-sm text-neutral-400 hover:text-white underline-offset-4 hover:underline;
+  }
+  .input {
+    @apply w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm placeholder:text-neutral-500 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
+  }
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1.5;
+  }
+  .card {
+    @apply rounded-lg border border-ink-700 bg-ink-900;
+  }
+  .pill {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  }
+  .pill-critical { @apply pill bg-red-500/20 text-red-300 ring-1 ring-inset ring-red-500/40; }
+  .pill-high     { @apply pill bg-orange-500/20 text-orange-300 ring-1 ring-inset ring-orange-500/40; }
+  .pill-medium   { @apply pill bg-amber-500/20 text-amber-300 ring-1 ring-inset ring-amber-500/40; }
+  .pill-low      { @apply pill bg-emerald-500/20 text-emerald-300 ring-1 ring-inset ring-emerald-500/40; }
+  .pill-active    { @apply pill bg-red-500/15 text-red-300; }
+  .pill-archived  { @apply pill bg-neutral-500/20 text-neutral-300; }
+  .pill-reformed  { @apply pill bg-emerald-500/15 text-emerald-300; }
+  .pill-disputed  { @apply pill bg-yellow-500/15 text-yellow-300; }
+  .tag {
+    @apply inline-flex items-center rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 ring-1 ring-ink-700;
+  }
+}
+
+::selection { background: #dc2626; color: white; }

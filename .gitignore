@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env*
+!.env.example
+prisma/dev.db
+prisma/dev.db-journal
+public/uploads/*
+!public/uploads/.gitkeep
+.DS_Store
+.claude
