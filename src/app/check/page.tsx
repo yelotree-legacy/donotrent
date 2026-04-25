@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { crossCheck } from "@/lib/cross-check";
 import { logSearch } from "@/lib/audit";
 import { requireCompany } from "@/lib/auth";
+import { canConsumeCheck, incrementCheck } from "@/lib/usage";
 import { CheckForm } from "./CheckForm";
 
 type SP = { license?: string; name?: string; dob?: string };
@@ -18,11 +19,18 @@ async function runCheck(formData: FormData) {
   if (!license && !name) redirect("/check");
 
   const me = await requireCompany();
+  if (me) {
+    const allowed = await canConsumeCheck(me.id);
+    if (!allowed.ok) redirect("/dashboard/billing?limit=reached");
+  }
+
   const xc = await crossCheck({
     licenseId: license || undefined,
     fullName: name || undefined,
     dateOfBirth: dob || undefined,
   });
+
+  if (me) await incrementCheck(me.id);
 
   const session = await prisma.checkSession.create({
     data: {

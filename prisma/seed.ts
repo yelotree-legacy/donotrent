@@ -52,7 +52,7 @@ async function main() {
   console.log("→ seeding admin account (admin@dnr.local)…");
   await prisma.company.upsert({
     where: { email: "admin@dnr.local" },
-    update: { isAdmin: true },
+    update: { isAdmin: true, plan: "enterprise" },
     create: {
       name: "DNR Registry Admin",
       slug: "dnr-admin",
@@ -60,6 +60,7 @@ async function main() {
       passwordHash,
       verified: true,
       isAdmin: true,
+      plan: "enterprise",
     },
   });
 

@@ -1,0 +1,135 @@
+import Link from "next/link";
+import { PLANS } from "@/lib/plans";
+import { requireCompany } from "@/lib/auth";
+import { ChoosePlanButton } from "./ChoosePlanButton";
+
+export default async function PricingPage({ searchParams }: { searchParams: { checkout?: string } }) {
+  const me = await requireCompany();
+
+  return (
+    <div className="space-y-10 fade-in">
+      {searchParams.checkout === "canceled" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          Checkout canceled. Pick a plan when you're ready.
+        </div>
+      )}
+
+      <header className="space-y-2 text-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-blue-300">
+          Pricing
+        </div>
+        <h1 className="text-4xl font-bold text-white md:text-5xl">Protect your fleet for less than one bad rental.</h1>
+        <p className="mx-auto max-w-2xl text-base text-neutral-400">
+          One subscription. Cross-source DNR check + Stripe Identity verification on every renter.
+          A single declined-but-correct call pays for the year.
+        </p>
+      </header>
+
+      <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        {(["starter", "pro", "business", "enterprise"] as const).map((slug) => {
+          const plan = PLANS[slug];
+          const highlight = plan.highlight;
+          return (
+            <div
+              key={slug}
+              className={`relative card overflow-hidden p-6 ${highlight ? "border-2 border-accent shadow-lg shadow-red-900/30" : ""}`}
+            >
+              {highlight && (
+                <div className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-md bg-accent px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white">
+                  Most popular
+                </div>
+              )}
+              <div className="text-sm font-semibold uppercase tracking-wider text-neutral-400">{plan.label}</div>
+              <div className="mt-3">
+                {plan.slug === "enterprise" ? (
+                  <div className="text-2xl font-bold text-white">Custom</div>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold text-white">${plan.monthlyPrice}</span>
+                    <span className="text-sm text-neutral-400">/month</span>
+                  </>
+                )}
+              </div>
+              <p className="mt-2 text-sm text-neutral-400">{plan.description}</p>
+
+              <ul className="mt-5 space-y-2">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-neutral-300">
+                    <Check />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6">
+                {plan.slug === "enterprise" ? (
+                  <a href="mailto:sales@dnr.local" className="btn-ghost w-full justify-center">Contact sales</a>
+                ) : me ? (
+                  <ChoosePlanButton plan={plan.slug} highlight={highlight} />
+                ) : (
+                  <Link
+                    href={`/signup?plan=${plan.slug}`}
+                    className={highlight ? "btn-primary w-full justify-center" : "btn-ghost w-full justify-center"}
+                  >
+                    {plan.cta}
+                  </Link>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="card p-8">
+        <h2 className="text-xl font-bold text-white">Free trial</h2>
+        <p className="mt-2 text-sm text-neutral-400">
+          New companies get <strong className="text-white">{PLANS.free.trialChecks} free Rent Reports</strong> on signup. No credit card.
+          Upgrade when you've seen it work.
+        </p>
+        {!me && (
+          <Link href="/signup" className="btn-primary mt-4 inline-flex">Start free trial</Link>
+        )}
+      </section>
+
+      <section className="grid gap-5 md:grid-cols-2">
+        <div className="card p-6">
+          <h3 className="text-base font-semibold text-white">What counts as a "Rent Report"?</h3>
+          <p className="mt-2 text-sm text-neutral-400">
+            One submitted check on `/check`. Includes the cross-source DNR query and any
+            Stripe Identity verification you initiate from that check session. Re-running an
+            already-completed check does not count again.
+          </p>
+        </div>
+        <div className="card p-6">
+          <h3 className="text-base font-semibold text-white">What if I exceed my plan?</h3>
+          <p className="mt-2 text-sm text-neutral-400">
+            We soft-block at your monthly limit and prompt to upgrade. No surprise charges.
+            Need overages instead? <a href="mailto:sales@dnr.local" className="text-accent underline">Talk to us</a>.
+          </p>
+        </div>
+        <div className="card p-6">
+          <h3 className="text-base font-semibold text-white">Can I cancel anytime?</h3>
+          <p className="mt-2 text-sm text-neutral-400">
+            Yes — cancel from the customer portal. Your plan stays active through the end of the
+            paid period, then drops to Free.
+          </p>
+        </div>
+        <div className="card p-6">
+          <h3 className="text-base font-semibold text-white">Do you sell my renter data?</h3>
+          <p className="mt-2 text-sm text-neutral-400">
+            No. Verification data from Stripe Identity is retained only for the matching audit
+            window and disclosed only to the company that initiated the check.
+          </p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Check() {
+  return (
+    <svg viewBox="0 0 16 16" className="mt-0.5 size-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="m3 8 3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

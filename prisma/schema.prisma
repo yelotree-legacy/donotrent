@@ -19,6 +19,23 @@ model Company {
   passwordHash    String
   verified        Boolean       @default(false)
   isAdmin         Boolean       @default(false)
+
+  // Billing & plan
+  // Plan: free | starter | pro | business | enterprise
+  plan                  String    @default("free")
+  // Subscription state from Stripe: trialing | active | past_due | canceled | incomplete | unpaid | none
+  stripeStatus          String    @default("none")
+  stripeCustomerId      String?   @unique
+  stripeSubscriptionId  String?   @unique
+  stripePriceId         String?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  trialEndsAt           DateTime?
+  checksUsedThisPeriod  Int       @default(0)
+  // For Pro+ plans, the API can be called with this token (bearer)
+  apiKeyHash            String?   @unique
+  apiKeyHint            String?   // last 4 chars for display
+
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

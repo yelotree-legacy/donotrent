@@ -67,7 +67,35 @@ npm run db:seed:full      # imports 263 entries with OCR-extracted licenses
 From the Vercel dashboard → **Deployments** → click the **⋯** menu on the
 latest deployment → **Redeploy**. The build will now succeed.
 
-## 8. (Optional) Stripe Identity for ID verification
+## 8a. (Required for paid tiers) Stripe Billing for subscriptions
+
+Sells the Starter / Pro / Business plans.
+
+1. **Stripe dashboard** → **Products** → **Add product** — repeat for each:
+   - "DNR Starter" with a $49/month recurring price
+   - "DNR Pro" with a $149/month recurring price
+   - "DNR Business" with a $399/month recurring price
+2. After creating each, click into it and copy its **Price ID** (looks like `price_1Xxxx…`)
+3. In Vercel **Settings → Environment Variables**, add:
+   - `STRIPE_PRICE_STARTER` = `price_…`
+   - `STRIPE_PRICE_PRO` = `price_…`
+   - `STRIPE_PRICE_BUSINESS` = `price_…`
+4. **Stripe → Developers → Webhooks** → either reuse the same endpoint as
+   IDV (`/api/idv/webhook`) and **subscribe additional events**, or create a
+   new endpoint pointing to `/api/billing/webhook`. The events to subscribe:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `customer.subscription.trial_will_end`
+5. If you used a separate endpoint, copy its signing secret to
+   `STRIPE_BILLING_WEBHOOK_SECRET`. If you reused the IDV endpoint, the
+   existing `STRIPE_WEBHOOK_SECRET` works for both.
+6. **Stripe → Settings → Customer portal** → **Activate test/live link**.
+   This is what the "Manage subscription" button on `/dashboard/billing` opens.
+7. Redeploy. The Pricing page (`/pricing`) buttons now hand off to Stripe Checkout.
+
+## 8b. (Optional) Stripe Identity for ID verification
 
 The `/check` flow can hand off to **Stripe Identity** for document scanning,
 liveness check, and selfie matching ($1.50 per verification).
