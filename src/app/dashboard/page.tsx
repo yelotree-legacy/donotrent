@@ -6,7 +6,6 @@ import { Sparkline } from "@/components/Sparkline";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { getPlan, checksRemaining } from "@/lib/plans";
 import { isStripeConfigured } from "@/lib/stripe";
-import { isCheckrConfigured } from "@/lib/checks/checkr";
 import { isFreeTier } from "@/lib/billing-mode";
 
 export default async function DashboardHome({ searchParams }: { searchParams: { welcome?: string } }) {
@@ -292,12 +291,10 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
           <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Setup health</h2>
           <ul className="mt-3 space-y-2">
             <HealthRow label="Stripe Identity" ok={isStripeConfigured()} note={isStripeConfigured() ? "Configured" : "Set STRIPE_SECRET_KEY"} />
-            <HealthRow label="Checkr (criminal)" ok={isCheckrConfigured()} note={isCheckrConfigured() ? "Configured" : "Set CHECKR_API_KEY"} />
-            <HealthRow label="Stripe Billing" ok={Boolean(process.env.STRIPE_PRICE_PRO)} note={process.env.STRIPE_PRICE_PRO ? "Live" : "Set STRIPE_PRICE_*"} />
             <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photos & uploads" />
           </ul>
           <p className="mt-3 border-t border-ink-800 pt-3 text-[11px] text-neutral-500">
-            All four green = full feature set live for your customers.
+            Both green = full feature set live for your customers.
           </p>
         </div>
       </div>
