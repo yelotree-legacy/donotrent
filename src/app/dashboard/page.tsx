@@ -5,7 +5,6 @@ import { SeverityPill } from "@/components/Pill";
 import { Sparkline } from "@/components/Sparkline";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { getPlan, checksRemaining } from "@/lib/plans";
-import { isStripeConfigured } from "@/lib/stripe";
 import { isFreeTier } from "@/lib/billing-mode";
 
 export default async function DashboardHome({ searchParams }: { searchParams: { welcome?: string } }) {
@@ -290,12 +289,9 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
         <div className="card p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Setup health</h2>
           <ul className="mt-3 space-y-2">
-            <HealthRow label="Stripe Identity" ok={isStripeConfigured()} note={isStripeConfigured() ? "Configured" : "Set STRIPE_SECRET_KEY"} />
-            <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photos & uploads" />
+            <HealthRow label="Database" ok={true} note="Connected" />
+            <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photo uploads" />
           </ul>
-          <p className="mt-3 border-t border-ink-800 pt-3 text-[11px] text-neutral-500">
-            Both green = full feature set live for your customers.
-          </p>
         </div>
       </div>
     </div>

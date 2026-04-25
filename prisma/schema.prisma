@@ -44,6 +44,63 @@ model Company {
   searchLogs      SearchLog[]
   auditEvents     AuditEvent[]
   checks          CheckSession[] @relation("CompanyChecks")
+  brokerReviews   BrokerReview[] @relation("BrokerReviews")
+}
+
+// A broker / agent in the rental ecosystem — a middleman who finds
+// customers, takes commissions, sometimes sub-rents. Reviewed by operators
+// who've worked with them.
+model Broker {
+  id              String         @id @default(cuid())
+  slug            String         @unique
+  name            String
+  aliases         String?        // JSON array
+  email           String?
+  phone           String?
+  website         String?
+  instagram       String?        // handle
+  city            String?
+  state           String?
+  description     String?
+
+  // Denormalized for list rendering
+  reviewCount     Int            @default(0)
+  avgRating       Float?         // 1.0–5.0; null = no reviews
+
+  status          String         @default("ACTIVE") // ACTIVE | DISPUTED | RESOLVED
+
+  reviews         BrokerReview[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([slug])
+  @@index([state])
+}
+
+model BrokerReview {
+  id              String   @id @default(cuid())
+  brokerId        String
+  broker          Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+
+  reviewerCompanyId String
+  reviewerCompany   Company @relation("BrokerReviews", fields: [reviewerCompanyId], references: [id], onDelete: Cascade)
+
+  rating          Int       // 1-5 stars
+  // experienceType: payment | fraud | communication | quality | other
+  experienceType  String?
+  title           String
+  body            String
+
+  incidentDate    DateTime?
+  damageAmount    Float?
+  resolved        Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([brokerId])
+  @@index([reviewerCompanyId])
+  @@index([createdAt])
 }
 
 // A "source" is one origin of DNR data — e.g. a partner rental company's

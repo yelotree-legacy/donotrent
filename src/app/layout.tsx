@@ -40,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <>
                   <NavLink href="/search" label="Search" />
                   <NavLink href="/check" label="Rent Report" />
+                  <NavLink href="/brokers" label="Brokers" />
                   <NavLink href="/browse" label="Browse" />
                   <NavLink href="/sources" label="Sources" />
                   {!free && <NavLink href="/pricing" label="Pricing" />}

@@ -2,12 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { crossCheck } from "@/lib/cross-check";
-import { isStripeConfigured } from "@/lib/stripe";
-import { looksLikeMatch } from "@/lib/idv";
 import { requireCompany } from "@/lib/auth";
-import { IdvLauncher } from "./IdvLauncher";
-import { IdvStatusPoller } from "./IdvStatusPoller";
-import { CopyButton } from "./CopyButton";
 
 export default async function CheckSessionPage({
   params,
@@ -30,16 +25,6 @@ export default async function CheckSessionPage({
     dateOfBirth: session.dateOfBirth?.toISOString().slice(0, 10),
   });
 
-  const stripeOn = isStripeConfigured();
-  const matches = looksLikeMatch({
-    licenseId: session.licenseId,
-    fullName: session.fullName,
-    dateOfBirth: session.dateOfBirth,
-    idvDocNumber: session.idvDocNumber,
-    idvVerifiedName: session.idvVerifiedName,
-    idvVerifiedDob: session.idvVerifiedDob,
-  });
-
   return (
     <div className="space-y-6 fade-in">
       <Link href="/check" className="btn-link">← New check</Link>
@@ -48,17 +33,9 @@ export default async function CheckSessionPage({
 
       <SourceBreakdown sources={xc.sources} />
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <OfacCard session={session} />
-        <IdentityCard session={session} stripeOn={stripeOn} matches={matches} />
-      </div>
+      <OfacCard session={session} />
 
       {xc.hits.length > 0 && <Evidence hits={xc.hits} />}
-
-      {/* Polls until IDV is verified or the user cancels. */}
-      {session.idvSessionId && session.idvStatus !== "verified" && (
-        <IdvStatusPoller checkId={session.id} />
-      )}
     </div>
   );
 }
@@ -167,122 +144,6 @@ function Verdict({ result, session }: { result: any; session: any }) {
           <Stat label="Risk" value={`${result.riskScore}`} suffix="/100" />
         </div>
       </div>
-    </div>
-  );
-}
-
-function IdentityCard({
-  session,
-  stripeOn,
-  matches,
-}: {
-  session: any;
-  stripeOn: boolean;
-  matches: { licenseMatch: boolean; nameMatch: boolean; dobMatch: boolean };
-}) {
-  const status = session.idvStatus as string;
-
-  return (
-    <div className="card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Identity</h2>
-        <StatusPillIDV status={status} />
-      </div>
-
-      {!stripeOn && (
-        <div className="mt-3 rounded border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
-          Stripe Identity isn't configured for this environment. Set <code className="rounded bg-amber-500/10 px-1 font-mono">STRIPE_SECRET_KEY</code> + <code className="rounded bg-amber-500/10 px-1 font-mono">STRIPE_WEBHOOK_SECRET</code> in Vercel to enable.
-        </div>
-      )}
-
-      {status === "not_started" && stripeOn && (
-        <>
-          <p className="mt-3 text-xs text-neutral-400">
-            Generate a verification link to send to the renter. They'll scan their license and take a selfie on their phone — typically takes 60 seconds.
-          </p>
-          <IdvLauncher checkId={session.id} className="mt-3 w-full justify-center" />
-          <p className="mt-2 text-[10px] text-neutral-500">$1.50 per verification · powered by Stripe Identity</p>
-        </>
-      )}
-
-      {status === "pending" && session.idvUrl && (
-        <div className="mt-3 space-y-3">
-          <p className="text-xs text-neutral-400">
-            Send this link to the renter. The verdict updates automatically when they finish.
-          </p>
-          <CopyLink url={session.idvUrl} />
-          <a href={session.idvUrl} target="_blank" rel="noreferrer" className="btn-primary w-full justify-center">
-            Open verification ↗
-          </a>
-        </div>
-      )}
-
-      {status === "verified" && (
-        <div className="mt-3 space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-emerald-300">
-            <CheckCircle /> Verified by Stripe Identity
-          </div>
-          <dl className="mt-2 space-y-1 rounded border border-ink-700 bg-ink-950/40 p-3">
-            <Row label="Name" match={matches.nameMatch}>
-              {session.idvVerifiedName || "—"}
-            </Row>
-            <Row label="DOB" match={matches.dobMatch}>
-              {session.idvVerifiedDob?.toISOString().slice(0, 10) || "—"}
-            </Row>
-            <Row label="License #" match={matches.licenseMatch}>
-              <span className="font-mono">{session.idvDocNumber || "—"}</span>
-            </Row>
-            <Row label="Document">{session.idvDocType?.replace(/_/g, " ") || "—"}</Row>
-            <Row label="Country">{session.idvDocCountry || "—"}</Row>
-            <Row label="Selfie match">
-              {session.idvSelfieMatch === true ? "Verified" : session.idvSelfieMatch === false ? "Failed" : "—"}
-            </Row>
-            {session.idvDocExpiry && (
-              <Row label="Expires">{session.idvDocExpiry.toISOString().slice(0, 10)}</Row>
-            )}
-          </dl>
-          {(!matches.licenseMatch || !matches.nameMatch) && (session.licenseId || session.fullName) && (
-            <div className="rounded border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-200">
-              Heads up: verified data doesn't fully match what you submitted to the cross-check.
-            </div>
-          )}
-        </div>
-      )}
-
-      {(status === "failed" || status === "canceled" || status === "requires_input") && (
-        <div className="mt-3 space-y-3">
-          <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-            Verification {status.replace(/_/g, " ")}{session.idvErrorCode ? ` — ${session.idvErrorCode}` : ""}.
-          </div>
-          <IdvLauncher checkId={session.id} label="Restart verification" className="w-full justify-center" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatusPillIDV({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    not_started: "pill bg-neutral-500/15 text-neutral-300 ring-1 ring-inset ring-neutral-500/30",
-    pending: "pill bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
-    verified: "pill bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
-    requires_input: "pill bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
-    canceled: "pill bg-neutral-500/15 text-neutral-300 ring-1 ring-inset ring-neutral-500/30",
-    failed: "pill bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
-  };
-  return <span className={map[status] || map.not_started}>{status.replace(/_/g, " ")}</span>;
-}
-
-function CopyLink({ url }: { url: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded border border-ink-700 bg-ink-950/50 p-2">
-      <input
-        readOnly
-        value={url}
-        className="flex-1 truncate bg-transparent px-1 text-xs text-neutral-300 focus:outline-none"
-        onFocus={(e) => e.currentTarget.select()}
-      />
-      <CopyButton text={url} />
     </div>
   );
 }

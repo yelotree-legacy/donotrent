@@ -41,6 +41,7 @@ export function MobileNav({
     ? [
         { href: "/search", label: "Search" },
         { href: "/check", label: "Rent Report" },
+        { href: "/brokers", label: "Brokers" },
         { href: "/browse", label: "Browse" },
         { href: "/sources", label: "Sources" },
         { href: "/dashboard", label: "Dashboard" },
