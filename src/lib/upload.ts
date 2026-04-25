@@ -1,3 +1,7 @@
+// File upload abstraction. Production uses Vercel Blob (writable filesystem
+// is not available on Vercel functions). Local dev falls back to writing to
+// public/uploads/<subdir>/ when BLOB_READ_WRITE_TOKEN is unset.
+
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -12,14 +16,38 @@ export async function saveUpload(file: File, subdir = "licenses"): Promise<strin
   if (file.size > MAX_BYTES) {
     throw new Error(`File too large (max ${MAX_BYTES / 1024 / 1024} MB)`);
   }
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    return saveToVercelBlob(file, subdir);
+  }
+  return saveToLocalFs(file, subdir);
+}
+
+async function saveToVercelBlob(file: File, subdir: string): Promise<string> {
+  const { put } = await import("@vercel/blob");
+  const ext = mimeToExt(file.type);
+  const key = `${subdir}/${randomUUID()}.${ext}`;
+  const blob = await put(key, file, {
+    access: "public",
+    contentType: file.type,
+    addRandomSuffix: false,
+  });
+  return blob.url;
+}
+
+async function saveToLocalFs(file: File, subdir: string): Promise<string> {
   const buf = Buffer.from(await file.arrayBuffer());
-  const ext = file.type === "image/png" ? "png"
-    : file.type === "image/jpeg" ? "jpg"
-      : file.type === "image/webp" ? "webp" : "gif";
+  const ext = mimeToExt(file.type);
   const id = randomUUID();
   const dir = join(process.cwd(), "public", "uploads", subdir);
   await mkdir(dir, { recursive: true });
   const filename = `${id}.${ext}`;
   await writeFile(join(dir, filename), buf);
   return `/uploads/${subdir}/${filename}`;
+}
+
+function mimeToExt(mime: string): string {
+  return mime === "image/png" ? "png"
+    : mime === "image/jpeg" ? "jpg"
+      : mime === "image/webp" ? "webp" : "gif";
 }

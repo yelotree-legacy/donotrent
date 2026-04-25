@@ -11,12 +11,13 @@ including **263 license images**, **110 OCR-extracted license numbers**,
 
 - **Next.js 14** App Router + React Server Components + Server Actions
 - **TypeScript**
-- **Prisma** + SQLite (dev) / Postgres-ready (prod)
+- **Prisma** + Postgres (use Neon free tier, or Vercel Postgres in prod)
+- **Vercel Blob** for license uploads (with local-fs fallback in dev)
 - **Tailwind CSS**
 - **iron-session** (cookie-based auth, no external IdP needed)
 - **bcryptjs** for password hashing
 
-No external services required to run locally.
+For Vercel deployment see [DEPLOY.md](./DEPLOY.md).
 
 ## Search engine
 
@@ -63,14 +64,20 @@ Filters: severity, status, category, license state. Composable via URL.
 
 ## Quick start
 
+You need a Postgres connection string. Easiest path: sign up for
+[Neon](https://neon.tech) (free) and grab the URL.
+
 ```bash
-npm install
 cp .env.example .env
-npm run db:push
+# Edit .env: paste your DATABASE_URL + DIRECT_URL from Neon
+# Generate SESSION_PASSWORD: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+npm install
+npm run db:push           # applies the schema to Postgres
 
 # Choose ONE seed path:
-npm run db:seed         # 240 entries — names + reasons only (fast, no images)
-npm run db:seed:full    # 263 entries with OCR-extracted license IDs (uses scripts/out/extracted.json)
+npm run db:seed           # 240 entries — names + reasons only (fast, no images)
+npm run db:seed:full      # 263 entries with OCR-extracted license IDs + photos
 
 npm run dev
 ```

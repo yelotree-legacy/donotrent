@@ -158,9 +158,12 @@ const data: Extracted[] = JSON.parse(readFileSync(extractedPath, "utf8"));
         sourceUrl: "https://supremesportrental.com/pages/do-not-rent-list",
         createdById: seedCo.id,
         reasons: { create: [{ text: r.reason || curated?.primaryReason || "—" }] },
-        photos: r.localPath ? {
+        photos: r.imageUrl ? {
           create: [{
-            url: r.localPath, kind: "LICENSE_FRONT",
+            // Reference the public Shopify CDN URL directly so we don't need to
+            // host these images ourselves. Vercel-friendly out of the box.
+            url: r.imageUrl,
+            kind: "LICENSE_FRONT",
             caption: `Imported from supremesportrental.com (OCR ${r.ocrConfidence})`
           }]
         } : undefined,
