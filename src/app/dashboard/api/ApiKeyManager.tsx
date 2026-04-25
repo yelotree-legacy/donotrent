@@ -2,12 +2,10 @@
 import { useState, useTransition } from "react";
 
 export function ApiKeyManager({
-  plan,
   apiKeyHint,
   rotateAction,
   revokeAction,
 }: {
-  plan: string;
   apiKeyHint: string | null;
   rotateAction: () => Promise<string>;
   revokeAction: () => Promise<void>;
@@ -59,7 +57,7 @@ export function ApiKeyManager({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-white">Your API key</h2>
-          <p className="mt-1 text-xs text-neutral-400">Plan: {plan} · Use this with the <code className="font-mono">Authorization: Bearer</code> header.</p>
+          <p className="mt-1 text-xs text-neutral-400">Use this with the <code className="font-mono">Authorization: Bearer</code> header.</p>
         </div>
         <div className="flex items-center gap-2">
           {hint ? (

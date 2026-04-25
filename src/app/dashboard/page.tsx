@@ -4,16 +4,9 @@ import { requireCompany } from "@/lib/auth";
 import { SeverityPill } from "@/components/Pill";
 import { Sparkline } from "@/components/Sparkline";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { getPlan, checksRemaining } from "@/lib/plans";
-import { isFreeTier } from "@/lib/billing-mode";
 
 export default async function DashboardHome({ searchParams }: { searchParams: { welcome?: string } }) {
   const me = (await requireCompany())!;
-  const free = isFreeTier();
-  const plan = getPlan(me.plan);
-  const usage = free
-    ? { remaining: Infinity, limit: 0, isUnlimited: true }
-    : checksRemaining({ plan: me.plan, checksUsedThisPeriod: me.checksUsedThisPeriod });
 
   // Pull a wide-but-bounded set of dashboard data in parallel.
   const periodStart = me.currentPeriodStart || new Date(Date.now() - 30 * 86400_000);
@@ -123,37 +116,20 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
       done: Boolean(me.apiKeyHash),
       hint: "Integrate the Rent Report into your booking flow",
     },
-    ...(!free && plan.slug === "free"
-      ? [{
-          key: "billing",
-          label: "Choose a plan when ready",
-          href: "/dashboard/billing",
-          done: false,
-          hint: "Free trial: 10 checks. Pro/Pro+ unlock more.",
-        }]
-      : []),
   ];
 
   return (
     <div className="space-y-6 fade-in">
       {searchParams.welcome && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 fade-in">
-          <span className="font-semibold">Welcome to They Can't Be Trusted.</span> Run your first Rent Report below — unlimited free checks while we're in early access.
+          <span className="font-semibold">Welcome to They Can't Be Trusted.</span> Run your first Rent Report below.
         </div>
       )}
 
       <header>
         <h1 className="text-2xl font-bold text-white">Welcome back, {me.name}</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          {free
-            ? "Free for verified rental operators · unlimited cross-source checks"
-            : `${plan.label} plan · ${
-                usage.isUnlimited
-                  ? "Unlimited"
-                  : plan.slug === "free"
-                    ? `${me.checksUsedThisPeriod} of ${plan.trialChecks} trial checks used`
-                    : `${usage.remaining} of ${usage.limit} checks left this period`
-              }`}
+          Verified rental operator · cross-source DNR + Broker Registry
         </p>
       </header>
 
@@ -164,7 +140,7 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
         <StatCard
           label="Rent Reports"
           value={recentChecks.length === 0 ? "—" : me.checksUsedThisPeriod.toString()}
-          sub={usage.isUnlimited ? "this period" : `of ${usage.limit} this period`}
+          sub="last 30 days"
           accent
           spark={dailyCounts}
         />

@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { isFreeTier } from "@/lib/billing-mode";
 
 export default async function MarketingHome() {
-  const [totalEntries, totalSources, totalCompanies] = await Promise.all([
+  const [totalEntries, totalSources] = await Promise.all([
     prisma.dnrEntry.count(),
     prisma.source.count({ where: { isActive: true } }),
-    prisma.company.count(),
   ]);
-  const free = isFreeTier();
 
   return (
     <div className="space-y-20 fade-in">
@@ -19,7 +16,7 @@ export default async function MarketingHome() {
         <div className="relative mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-red-300">
             <span className="size-1.5 animate-pulse rounded-full bg-red-400" />
-            {free ? "Free for verified rental operators" : "For verified rental operators"}
+            For verified rental operators
           </div>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white md:text-6xl">
             They Can't Be<span className="text-red-400"> Trusted</span>.
@@ -28,19 +25,12 @@ export default async function MarketingHome() {
             The rental industry's accountability network. Cross-source Do Not Rent + Broker Registry, in one place.
           </p>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-neutral-300">
-            Pass / Review / Decline verdict in 60 seconds — on the renter <em>and</em> the broker who brought them.{free ? " Free for the rental industry." : ""}
+            Pass / Review / Decline verdict in 60 seconds — on the renter <em>and</em> the broker who brought them.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/signup" className="btn-primary text-base px-6 py-3">
-              {free ? "Create free account" : "Start free trial"}
-            </Link>
+            <Link href="/signup" className="btn-primary text-base px-6 py-3">Create account</Link>
             <Link href="#how" className="btn-ghost text-base px-6 py-3">How it works</Link>
           </div>
-          <p className="mt-3 text-xs text-neutral-500">
-            {free
-              ? "Free forever for verified rental operators · No credit card · Unlimited cross-source checks"
-              : "10 free Rent Reports · No credit card · Cancel anytime"}
-          </p>
         </div>
 
         <div className="relative mx-auto mt-12 grid max-w-3xl grid-cols-3 gap-4">
@@ -55,25 +45,25 @@ export default async function MarketingHome() {
         <header className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold text-white">A renter walks up. What do you do?</h2>
           <p className="mt-2 text-neutral-400">
-            One step replaces three vendors and saves you from the worst kind of customer.
+            One step that protects your fleet from the worst kind of customer.
           </p>
         </header>
         <ol className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
           <Step n={1} title="Submit name + license" body="Paste their full name and license ID into the Rent Report tool. Or POST it from your booking system via API." />
           <Step n={2} title="Cross-source check" body="We query every active DNR source in parallel — partner operators, your own network, public registries — plus OFAC sanctions in the same request." />
-          <Step n={3} title="Verdict in seconds" body="Approve · Manual review · Decline, with risk score and evidence. Optional Stripe Identity verification confirms the license is real." />
+          <Step n={3} title="Verdict in seconds" body="Approve · Manual review · Decline, with risk score and full evidence trail of every match." />
         </ol>
       </section>
 
       {/* FEATURES */}
       <section>
         <header className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold text-white">Two registries. One subscription.</h2>
+          <h2 className="text-3xl font-bold text-white">Two registries. One tool.</h2>
           <p className="mt-2 text-neutral-400">Vet the renter AND the broker who brought them.</p>
         </header>
         <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Feature title="Multi-source DNR cross-check" body="Aggregate across partner operators, your own uploads, and the public registry. Cross-source corroboration auto-escalates the verdict." />
-          <Feature title="OFAC sanctions screening" body="Free US Treasury SDN list match runs on every check. Federal-grade watchlist, automatic." />
+          <Feature title="OFAC sanctions screening" body="US Treasury SDN list match runs on every check. Federal-grade watchlist, automatic." />
           <Feature title="Broker Registry" body="Rate and review the agents and middlemen who source your customers. Spot the brokers who keep bringing problem renters before you take their next call." />
           <Feature title="Risk score 0–100" body="Severity × source-trust × hit count, weighted for multi-source corroboration. Tune your own thresholds." />
           <Feature title="API access" body="POST /api/v1/check from your booking system. Auto-block at booking time." />
@@ -111,8 +101,8 @@ export default async function MarketingHome() {
           <h3 className="text-xl font-bold text-white">Why this exists</h3>
           <ul className="mt-4 space-y-3 text-sm text-neutral-300">
             <li className="flex gap-3"><Dot /> <span><strong className="text-white">Rental-industry specific.</strong> Every entry is from a real flagged renter, not a generic background-check pull.</span></li>
-            <li className="flex gap-3"><Dot /> <span><strong className="text-white">Cross-source by default.</strong> One check hits every active DNR source. No second contract.</span></li>
-            <li className="flex gap-3"><Dot /> <span><strong className="text-white">{free ? "Free for the industry." : "Lower entry price."}</strong> {free ? "No subscription. No per-check fee. The platform is free; only optional add-ons (IDV, criminal checks) carry passthrough costs." : "Persona starts at $300/mo. We start at $49/mo."}</span></li>
+            <li className="flex gap-3"><Dot /> <span><strong className="text-white">Cross-source by default.</strong> One check hits every active DNR source.</span></li>
+            <li className="flex gap-3"><Dot /> <span><strong className="text-white">Two registries in one tool.</strong> Vet the renter AND the broker who introduced them.</span></li>
             <li className="flex gap-3"><Dot /> <span><strong className="text-white">Network effects.</strong> Your uploads cross-check against everyone else's. The bigger the network, the better it gets.</span></li>
           </ul>
         </div>
@@ -120,7 +110,7 @@ export default async function MarketingHome() {
         <div className="card p-8">
           <h3 className="text-xl font-bold text-white">A single bad rental can ruin a quarter</h3>
           <p className="mt-3 text-sm text-neutral-300">
-            The average exotic-rental damage incident in our registry totals <span className="font-semibold text-white">$3,800+</span>. Several entries exceed <span className="font-semibold text-white">$15,000</span>. {free ? "The platform is free — one declined-but-correct call has paid back forever." : "The Pro plan is $149/month — one declined-but-correct call pays for the year."}
+            The average exotic-rental damage incident in our registry totals <span className="font-semibold text-white">$3,800+</span>. Several entries exceed <span className="font-semibold text-white">$15,000</span> in damages alone. One declined-but-correct call has paid back forever.
           </p>
           <div className="mt-5 grid grid-cols-3 gap-3">
             <MicroStat label="Avg damages / incident" value="$3.8K" />
@@ -136,12 +126,12 @@ export default async function MarketingHome() {
           <h2 className="text-3xl font-bold text-white">Common questions</h2>
         </header>
         <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
-          {free && <FAQ q="Is it really free?" a="Yes — for verified rental operators. Cross-source DNR + OFAC + Broker Registry + the API are unlimited and free. Future add-ons may carry passthrough vendor costs but the core platform stays free." />}
-          <FAQ q="What's the Broker Registry?" a="A separate registry for the agents and middlemen who source rental customers. Operators rate brokers on the quality of customers they bring, payment reliability, and communication. Search by name, email, or Instagram handle." />
-          <FAQ q="How fast is a Rent Report?" a="Cross-source check runs in under a second. Stripe Identity adds a 30–60 second flow on the renter's phone. The verdict updates live as the renter completes." />
+          <FAQ q="Who can use the platform?" a="Verified rental operators. Sign up with your business email; you'll get full access to the registry, broker reviews, and the API." />
+          <FAQ q="What's the Broker Registry?" a="A registry for the agents and middlemen who source rental customers. Operators rate brokers on the quality of customers they bring, payment reliability, and communication. Search by name, email, or Instagram handle." />
+          <FAQ q="How fast is a Rent Report?" a="Cross-source check runs in under a second. The verdict appears the moment you submit the form." />
           <FAQ q="Does the public see who's flagged?" a="No. The registry is gated behind operator authentication. Public visitors see only this marketing site, signup, and the dispute form." />
           <FAQ q="What if a renter disputes their listing?" a="Anyone listed can file a dispute. The entry's status flips to DISPUTED until the listing operator responds. Disputed entries carry lower trust weight in the verdict." />
-          <FAQ q="Can I integrate with my booking system?" a={free ? "Yes — every account gets API access. POST a name + license ID, get back the verdict + risk score in milliseconds." : "Yes — Pro and Business plans expose a JSON API."} />
+          <FAQ q="Can I integrate with my booking system?" a="Yes — every account gets API access. POST a name + license ID, get back the verdict + risk score in milliseconds." />
           <FAQ q="Can I upload my own DNR list?" a="Yes. Use the bulk CSV import or upload one entry at a time. Your list becomes a private source and participates in cross-checks." />
         </div>
       </section>
@@ -150,12 +140,10 @@ export default async function MarketingHome() {
       <section className="rounded-2xl border-2 border-accent bg-gradient-to-br from-red-950/40 to-ink-900 px-6 py-12 text-center md:px-12 md:py-16">
         <h2 className="text-3xl font-bold text-white md:text-4xl">Run your first Rent Report in 5 minutes.</h2>
         <p className="mx-auto mt-3 max-w-2xl text-neutral-300">
-          {free
-            ? "Sign up, run unlimited checks against the network, integrate the API. Free for the rental industry."
-            : "Sign up, run 10 free checks, integrate the API. Decide whether to keep the subscription after."}
+          Sign up, search the network, integrate the API into your booking flow.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/signup" className="btn-primary text-base px-6 py-3">{free ? "Create free account" : "Start free trial"}</Link>
+          <Link href="/signup" className="btn-primary text-base px-6 py-3">Create account</Link>
         </div>
       </section>
     </div>
@@ -195,6 +183,14 @@ function Feature({ title, body }: { title: string; body: string }) {
     </div>
   );
 }
+function FAQ({ q, a }: { q: string; a: string }) {
+  return (
+    <div className="card p-5">
+      <h3 className="text-sm font-semibold text-white">{q}</h3>
+      <p className="mt-2 text-sm text-neutral-400">{a}</p>
+    </div>
+  );
+}
 function ExampleBroker({ name, rating, reviews, note, tone }: { name: string; rating: number | null; reviews: number; note: string; tone: "red" | "green" | "neutral" }) {
   const ratingCls = tone === "red" ? "text-red-300" : tone === "green" ? "text-emerald-300" : "text-neutral-500";
   return (
@@ -209,14 +205,6 @@ function ExampleBroker({ name, rating, reviews, note, tone }: { name: string; ra
       </div>
       <div className="mt-1 text-xs text-neutral-400">{note}</div>
       {reviews > 0 && <div className="mt-1 text-[10px] text-neutral-500">{reviews} reviews</div>}
-    </div>
-  );
-}
-function FAQ({ q, a }: { q: string; a: string }) {
-  return (
-    <div className="card p-5">
-      <h3 className="text-sm font-semibold text-white">{q}</h3>
-      <p className="mt-2 text-sm text-neutral-400">{a}</p>
     </div>
   );
 }

@@ -9,7 +9,6 @@ import { Filters } from "@/components/Filters";
 import { EntryCard } from "@/components/EntryCard";
 import { logSearch } from "@/lib/audit";
 import { requireCompany } from "@/lib/auth";
-import { checksRemaining, getPlan } from "@/lib/plans";
 
 type SP = {
   q?: string;
@@ -50,8 +49,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   if (q) await logSearch(q, field, hits.length);
 
   const isSearching = Boolean(q || cats.length || severity.length || status.length);
-  const usage = checksRemaining({ plan: me.plan, checksUsedThisPeriod: me.checksUsedThisPeriod });
-  const plan = getPlan(me.plan);
 
   return (
     <div className="space-y-10">
@@ -62,8 +59,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         categoryCount={categories.length}
         q={q}
         field={field}
-        plan={plan.label}
-        remaining={usage.isUnlimited ? null : usage.remaining}
       />
 
       <section className="grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
@@ -140,7 +135,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
 }
 
 function Hero({
-  totalCount, withLicenseCount, criticalCount, categoryCount, q, field, plan, remaining,
+  totalCount, withLicenseCount, criticalCount, categoryCount, q, field,
 }: {
   totalCount: number;
   withLicenseCount: number;
@@ -148,35 +143,24 @@ function Hero({
   categoryCount: number;
   q: string;
   field: string;
-  plan: string;
-  remaining: number | null;
 }) {
   return (
     <section className="relative overflow-hidden rounded-2xl border border-ink-700/80 bg-gradient-to-br from-ink-900 via-ink-950 to-ink-900 p-8 md:p-10">
       <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-red-500/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-blue-500/5 blur-3xl" />
 
-      <div className="relative flex flex-wrap items-start justify-between gap-3">
-        <div className="max-w-3xl space-y-3 fade-in">
-          <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-red-300">
-            <span className="size-1.5 animate-pulse rounded-full bg-red-400" />
-            Live registry · cross-company
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
-            Search the Do Not Rent list.
-          </h1>
-          <p className="text-base text-neutral-400 md:text-lg">
-            Vehicle rental operators sharing one searchable database of flagged renters.
-            Search by full name <em>or</em> license ID — exact, prefix, alias, and fuzzy matches included.
-          </p>
+      <div className="relative max-w-3xl space-y-3 fade-in">
+        <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-red-300">
+          <span className="size-1.5 animate-pulse rounded-full bg-red-400" />
+          Live registry · cross-company
         </div>
-        <Link href="/dashboard/billing" className="rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-right text-xs">
-          <div className="text-[10px] uppercase tracking-wider text-neutral-500">Plan</div>
-          <div className="font-semibold text-white">{plan}</div>
-          {remaining != null && (
-            <div className="mt-0.5 text-[10px] text-neutral-400">{remaining} checks left</div>
-          )}
-        </Link>
+        <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
+          Search the Do Not Rent list.
+        </h1>
+        <p className="text-base text-neutral-400 md:text-lg">
+          Vehicle rental operators sharing one searchable database of flagged renters.
+          Search by full name <em>or</em> license ID — exact, prefix, alias, and fuzzy matches included.
+        </p>
       </div>
 
       <div className="relative mt-6">

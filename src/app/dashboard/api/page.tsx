@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCompany } from "@/lib/auth";
-import { getPlan } from "@/lib/plans";
 import { rotateApiKey, revokeApiKey } from "@/lib/api-key";
 import { ApiKeyManager } from "./ApiKeyManager";
 
@@ -9,8 +7,6 @@ async function rotateAction() {
   "use server";
   const me = await requireCompany();
   if (!me) throw new Error("Sign in required");
-  const plan = getPlan(me.plan);
-  if (!plan.apiAccess) throw new Error("Upgrade to Pro for API access");
   const { plaintext } = await rotateApiKey(me.id);
   return plaintext;
 }
@@ -25,8 +21,6 @@ async function revokeAction() {
 export default async function ApiPage() {
   const me = await requireCompany();
   if (!me) redirect("/login?next=/dashboard/api");
-  const plan = getPlan(me.plan);
-  const hasAccess = plan.apiAccess;
 
   return (
     <div className="space-y-6 fade-in">
@@ -37,22 +31,11 @@ export default async function ApiPage() {
         </p>
       </header>
 
-      {!hasAccess ? (
-        <div className="card border-amber-500/30 bg-amber-500/5 p-6">
-          <h2 className="text-base font-semibold text-amber-200">API access requires Pro or Pro+ plan</h2>
-          <p className="mt-2 text-sm text-amber-100/80">
-            Your current plan: <strong>{plan.label}</strong>. Upgrade to unlock API integration into your booking flow.
-          </p>
-          <Link href="/pricing" className="btn-primary mt-4 inline-flex">View plans</Link>
-        </div>
-      ) : (
-        <ApiKeyManager
-          plan={plan.label}
-          apiKeyHint={me.apiKeyHint}
-          rotateAction={rotateAction}
-          revokeAction={revokeAction}
-        />
-      )}
+      <ApiKeyManager
+        apiKeyHint={me.apiKeyHint}
+        rotateAction={rotateAction}
+        revokeAction={revokeAction}
+      />
 
       <section className="card p-6">
         <h2 className="text-base font-semibold text-white">Endpoint</h2>
