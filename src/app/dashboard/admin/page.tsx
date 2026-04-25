@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireCompany } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getOfacCacheInfo } from "@/lib/checks/ofac";
+import { OfacSyncButton } from "./OfacSyncButton";
 
 export default async function AdminPage() {
   const me = await requireCompany();
@@ -46,18 +48,19 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      <div className="card p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold text-white">Photo migration</h2>
-            <p className="text-xs text-neutral-400 mt-1">
-              Move imported photos from external CDNs to Vercel Blob (self-hosted).
-            </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-white">Photo migration</h2>
+              <p className="text-xs text-neutral-400 mt-1">
+                Move imported photos from external CDNs to Vercel Blob.
+              </p>
+            </div>
+            <a href="/dashboard/admin/photo-migration" className="btn-ghost shrink-0">Open →</a>
           </div>
-          <a href="/dashboard/admin/photo-migration" className="btn-primary">
-            Open migration tool →
-          </a>
         </div>
+        <OfacSyncCard />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -91,6 +94,28 @@ export default async function AdminPage() {
             {recentSearches.length === 0 && <li className="py-2 text-sm text-neutral-400">No searches yet.</li>}
           </ul>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function OfacSyncCard() {
+  const info = getOfacCacheInfo();
+  return (
+    <div className="card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <h2 className="font-semibold text-white">OFAC SDN list</h2>
+          <p className="text-xs text-neutral-400 mt-1">
+            Cached US Treasury sanctions list. Auto-refreshes every 24h.
+          </p>
+          <div className="mt-3 text-xs text-neutral-500">
+            {info.cached
+              ? <>{info.rowsLoaded.toLocaleString()} entries · refreshed {info.ageMinutes != null ? `${info.ageMinutes} min ago` : "now"}</>
+              : <em>Not loaded yet</em>}
+          </div>
+        </div>
+        <OfacSyncButton />
       </div>
     </div>
   );
