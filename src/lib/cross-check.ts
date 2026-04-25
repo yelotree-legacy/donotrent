@@ -50,6 +50,25 @@ export type HitDetail = {
 
 const SEVERITY_RANK: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
 
+// Cache active sources in-process for 5 min to avoid hitting the DB on
+// every cross-check. The Source list is rarely updated; if an admin adds
+// or deactivates a source it'll be picked up after the cache expires.
+type CachedSources = { rows: Awaited<ReturnType<typeof prisma.source.findMany>>; loadedAt: number };
+let cachedSources: CachedSources | null = null;
+const SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function getCachedActiveSources() {
+  if (cachedSources && Date.now() - cachedSources.loadedAt < SOURCE_CACHE_TTL_MS) {
+    return cachedSources.rows;
+  }
+  const rows = await prisma.source.findMany({
+    where: { isActive: true },
+    orderBy: { trustScore: "desc" },
+  });
+  cachedSources = { rows, loadedAt: Date.now() };
+  return rows;
+}
+
 export async function crossCheck(input: CrossCheckInput): Promise<CrossCheckResult> {
   const lic = input.licenseId?.trim() || "";
   const name = input.fullName?.trim() || "";
@@ -68,7 +87,7 @@ export async function crossCheck(input: CrossCheckInput): Promise<CrossCheckResu
   }
   if (dob) orConds.push({ dateOfBirth: dob });
 
-  const allSources = await prisma.source.findMany({ where: { isActive: true }, orderBy: { trustScore: "desc" } });
+  const allSources = await getCachedActiveSources();
 
   let candidates: any[] = [];
   if (orConds.length) {

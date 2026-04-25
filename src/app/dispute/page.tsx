@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { rateLimitStrict, getClientIp, Limits } from "@/lib/rate-limit";
 
 async function fileDispute(formData: FormData) {
   "use server";
@@ -8,6 +9,11 @@ async function fileDispute(formData: FormData) {
   const filerName = String(formData.get("filerName") || "").trim();
   const filerContact = String(formData.get("filerContact") || "").trim();
   const reason = String(formData.get("reason") || "").trim();
+
+  // Per-IP cap: prevent spam-bot floods on the public dispute form
+  const ip = getClientIp();
+  const rl = await rateLimitStrict({ key: `dispute:${ip}`, ...Limits.disputeByIp });
+  if (!rl.ok) redirect(`/dispute?entry=${entryId}&err=ratelimit`);
 
   if (!entryId || !filerName || !filerContact || reason.length < 20) {
     redirect(`/dispute?entry=${entryId}&err=invalid`);
@@ -39,7 +45,9 @@ export default async function DisputePage({ searchParams }: { searchParams: { en
         </p>
         {searchParams.err && (
           <div className="mt-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-            {searchParams.err === "notfound" ? "Entry not found." : "Please complete the form (reason ≥ 20 characters)."}
+            {searchParams.err === "notfound" ? "Entry not found."
+              : searchParams.err === "ratelimit" ? "Too many disputes filed from your network today. Try again tomorrow."
+                : "Please complete the form (reason ≥ 20 characters)."}
           </div>
         )}
         <form action={fileDispute} className="mt-5 space-y-4">

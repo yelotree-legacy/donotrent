@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { rateLimitStrict, getClientIp, Limits } from "@/lib/rate-limit";
 
 async function fileBrokerDispute(formData: FormData) {
   "use server";
@@ -11,6 +12,14 @@ async function fileBrokerDispute(formData: FormData) {
   const filerContact = String(formData.get("filerContact") || "").trim();
   const filerRole = String(formData.get("filerRole") || "").trim() || null;
   const reason = String(formData.get("reason") || "").trim();
+
+  const ip = getClientIp();
+  const rl = await rateLimitStrict({ key: `broker_dispute:${ip}`, ...Limits.disputeByIp });
+  if (!rl.ok) {
+    const broker = await prisma.broker.findUnique({ where: { id: brokerId }, select: { slug: true } });
+    if (broker) redirect(`/brokers/${broker.slug}/dispute?err=ratelimit`);
+    redirect("/brokers");
+  }
 
   if (!brokerId || !filerName || !filerContact || reason.length < 20) {
     redirect(`/brokers/dispute-form?id=${brokerId}&err=invalid`);
@@ -68,6 +77,11 @@ export default async function BrokerDisputePage({
       {searchParams.err === "invalid" && (
         <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
           Please complete the form (rebuttal must be at least 20 characters).
+        </div>
+      )}
+      {searchParams.err === "ratelimit" && (
+        <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          Too many disputes filed from your network today. Try again tomorrow.
         </div>
       )}
 

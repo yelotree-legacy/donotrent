@@ -2,12 +2,24 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authenticate } from "@/lib/auth";
 import { getSession } from "@/lib/session";
+import { rateLimitStrict, getClientIp, Limits } from "@/lib/rate-limit";
 
 async function loginAction(formData: FormData) {
   "use server";
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   if (!email || !password) redirect("/login?err=missing");
+
+  // Two-layer rate limit: per-email (defends one account from brute force)
+  // and per-IP (catches credential stuffing across many accounts).
+  const ip = getClientIp();
+  const [byEmail, byIp] = await Promise.all([
+    rateLimitStrict({ key: `login:email:${email}`, ...Limits.loginByEmail }),
+    rateLimitStrict({ key: `login:ip:${ip}`, ...Limits.loginByIp }),
+  ]);
+  if (!byEmail.ok) redirect(`/login?err=ratelimit&retry=${byEmail.retryAfterSeconds}`);
+  if (!byIp.ok) redirect(`/login?err=ratelimit&retry=${byIp.retryAfterSeconds}`);
+
   const co = await authenticate(email, password);
   if (!co) redirect("/login?err=invalid");
   const session = await getSession();
@@ -20,7 +32,7 @@ async function loginAction(formData: FormData) {
   redirect(next && next.startsWith("/") ? next : "/dashboard");
 }
 
-export default function LoginPage({ searchParams }: { searchParams: { err?: string; next?: string } }) {
+export default function LoginPage({ searchParams }: { searchParams: { err?: string; next?: string; retry?: string } }) {
   const err = searchParams.err;
   const next = searchParams.next || "";
   return (
@@ -32,7 +44,11 @@ export default function LoginPage({ searchParams }: { searchParams: { err?: stri
         </p>
         {err && (
           <div className="mt-4 rounded border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-            {err === "invalid" ? "Invalid email or password." : "Please complete the form."}
+            {err === "invalid"
+              ? "Invalid email or password."
+              : err === "ratelimit"
+                ? `Too many sign-in attempts. Try again in ${Math.ceil((Number(searchParams.retry) || 60) / 60)} min.`
+                : "Please complete the form."}
           </div>
         )}
         <form action={loginAction} className="mt-5 space-y-4">

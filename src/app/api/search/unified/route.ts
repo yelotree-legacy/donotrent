@@ -6,10 +6,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchEntries } from "@/lib/search";
 import { searchBrokers } from "@/lib/brokers";
 import { logSearch } from "@/lib/audit";
+import { rateLimit, getClientIp, Limits } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+export const maxDuration = 10;
 
 export async function GET(req: NextRequest) {
+  // Rate limit by IP — fail-open so a flaky DB doesn't kill search
+  const ip = getClientIp();
+  const rl = await rateLimit({ key: `search:${ip}`, ...Limits.searchByIp });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Slow down." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
+
   const sp = req.nextUrl.searchParams;
   const q = sp.get("q")?.trim() ?? "";
   const field = (sp.get("field") as any) ?? "any";

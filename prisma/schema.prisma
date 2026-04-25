@@ -214,6 +214,7 @@ model DnrEntry {
   @@index([lastName])
   @@index([status])
   @@index([sourceId])
+  @@index([createdById])
 }
 
 // Many-to-many: each entry can be tagged with multiple violation categories.
@@ -300,6 +301,7 @@ model SearchLog {
   ip          String?
   createdAt   DateTime @default(now())
   @@index([createdAt])
+  @@index([companyId])
 }
 
 // One row per Rent Report run. Persists the cross-source verdict + any
@@ -368,6 +370,7 @@ model CheckSession {
   @@index([createdAt])
   @@index([idvSessionId])
   @@index([checkrReportId])
+  @@index([companyId, createdAt])
 }
 
 // Tamper-evident log of mutations for trust.
@@ -379,6 +382,19 @@ model AuditEvent {
   target    String
   metadata  String?  // JSON
   createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+
+// In-DB rate limiter. Each row = one attempted action keyed by something
+// that identifies the actor (IP, email, API key). We count rows in a
+// rolling window to enforce limits. A daily purge keeps the table small.
+model RateLimitAttempt {
+  id         String   @id @default(cuid())
+  key        String   // composite: "<action>:<actor>"  e.g. "signup:1.2.3.4"
+  createdAt  DateTime @default(now())
+  metadata   String?  // optional JSON, e.g. failure code
+
+  @@index([key, createdAt])
   @@index([createdAt])
 }
 
