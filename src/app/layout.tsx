@@ -4,7 +4,6 @@ import "./globals.css";
 import { getSession } from "@/lib/session";
 import { LogoutButton } from "@/components/LogoutButton";
 import { MobileNav } from "@/components/MobileNav";
-import { isFreeTier } from "@/lib/billing-mode";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://theycantbetrusted.com"),
@@ -28,7 +27,6 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   const signedIn = Boolean(session.companyId);
-  const free = isFreeTier();
 
   return (
     <html lang="en">
@@ -61,7 +59,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <NavLink href="/brokers" label="Brokers" />
                   <NavLink href="/browse" label="Browse" />
                   <NavLink href="/sources" label="Sources" />
-                  {!free && <NavLink href="/pricing" label="Pricing" />}
                   <NavLink href="/dashboard" label="Dashboard" />
                   <Link href="/dashboard/upload" className="btn-primary ml-1">
                     <span className="text-base leading-none">+</span> Upload
@@ -71,9 +68,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ) : (
                 <>
                   <NavLink href="/" label="Home" />
-                  {!free && <NavLink href="/pricing" label="Pricing" />}
                   <NavLink href="/login" label="Sign in" />
-                  <Link href="/signup" className="btn-primary ml-1">Register</Link>
+                  <Link href="/signup" className="btn-primary ml-1">Create account</Link>
                 </>
               )}
             </nav>
