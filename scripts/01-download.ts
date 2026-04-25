@@ -21,10 +21,10 @@ function slugify(s: string) {
 }
 
 function localFilename(t: Tuple): string {
-  // Build a stable filename: slug + first 8 chars of url-hash + extension
+  // Use the URL hash only — stable across name changes so OCR cache stays valid.
   const ext = extname(new URL(t.imageUrl).pathname).toLowerCase() || ".png";
-  const hash = createHash("sha1").update(t.imageUrl).digest("hex").slice(0, 8);
-  return `${slugify(t.name)}-${hash}${ext}`;
+  const hash = createHash("sha1").update(t.imageUrl).digest("hex").slice(0, 16);
+  return `${hash}${ext}`;
 }
 
 async function downloadOne(t: Tuple): Promise<{ ok: boolean; path: string; bytes: number; error?: string }> {

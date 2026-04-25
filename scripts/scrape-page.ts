@@ -54,17 +54,33 @@ for (let m: RegExpExecArray | null; (m = paraRe.exec(html)); ) {
   paras.push({ idx: m.index, text });
 }
 
-// Pair each image with the heading + paragraph that immediately follow it.
+// On this page each entry is laid out as: <h2>Name</h2> <p>Reason</p> <img>License</img>
+// (text-content block first, media block second). So pair each image with the
+// immediately PRECEDING heading + paragraph, not the following one.
 for (const img of imgs) {
-  const heading = headings.find((h) => h.idx > img.idx);
+  // Largest heading idx still less than img.idx
+  let heading: typeof headings[number] | null = null;
+  for (const h of headings) {
+    if (h.idx < img.idx && (!heading || h.idx > heading.idx)) heading = h;
+  }
   if (!heading) continue;
-  const para = paras.find((p) => p.idx > heading.idx);
+  // Paragraph between this heading and this image
+  let para: typeof paras[number] | null = null;
+  for (const p of paras) {
+    if (p.idx > heading.idx && p.idx < img.idx) {
+      if (!para || p.idx < para.idx) para = p;
+    }
+  }
   out.push({
     name: heading.text,
     reason: para?.text || "",
     imageUrl: img.url,
   });
 }
+
+// If multiple images share the same heading (e.g. front + back of license),
+// the loop above produces multiple tuples with the same name — that's fine,
+// they'll all attach as separate photos to the same person.
 
 mkdirSync(join(process.cwd(), "scripts", "out"), { recursive: true });
 writeFileSync(

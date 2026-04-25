@@ -2,7 +2,7 @@
 
 A multi-tenant **Do Not Rent** registry for vehicle rental companies. Verified operators upload customer licenses + reasons; any company (or the public) can search by full name or license ID with exact, prefix, substring, alias, and fuzzy (Levenshtein) matching.
 
-Seed data: **263 entries** imported from
+Seed data: **264 entries** imported from
 [`supremesportrental.com/pages/do-not-rent-list`](https://supremesportrental.com/pages/do-not-rent-list)
 including **263 license images**, **110 OCR-extracted license numbers**,
 **91 license states**, **81 dates of birth**, **59 expiration dates**.
@@ -77,7 +77,7 @@ npm run db:push           # applies the schema to Postgres
 
 # Choose ONE seed path:
 npm run db:seed           # 240 entries — names + reasons only (fast, no images)
-npm run db:seed:full      # 263 entries with OCR-extracted license IDs + photos
+npm run db:seed:full      # 264 entries with OCR-extracted license IDs + photos
 
 npm run dev
 ```
