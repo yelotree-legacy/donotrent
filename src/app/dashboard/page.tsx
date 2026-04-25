@@ -2,10 +2,29 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireCompany } from "@/lib/auth";
 import { SeverityPill } from "@/components/Pill";
+import { Sparkline } from "@/components/Sparkline";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { getPlan, checksRemaining } from "@/lib/plans";
+import { isStripeConfigured } from "@/lib/stripe";
+import { isCheckrConfigured } from "@/lib/checks/checkr";
 
 export default async function DashboardHome({ searchParams }: { searchParams: { welcome?: string } }) {
   const me = (await requireCompany())!;
-  const [myCount, totalEntries, totalCompanies, totalReports, recent] = await Promise.all([
+  const plan = getPlan(me.plan);
+  const usage = checksRemaining({ plan: me.plan, checksUsedThisPeriod: me.checksUsedThisPeriod });
+
+  // Pull a wide-but-bounded set of dashboard data in parallel.
+  const periodStart = me.currentPeriodStart || new Date(Date.now() - 30 * 86400_000);
+  const [
+    myEntriesCount,
+    totalEntries,
+    totalCompanies,
+    myReportsCount,
+    recentEntries,
+    recentChecks,
+    verdictBreakdown,
+    last30Checks,
+  ] = await Promise.all([
     prisma.dnrEntry.count({ where: { createdById: me.id } }),
     prisma.dnrEntry.count(),
     prisma.company.count(),
@@ -19,47 +38,219 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
         photos: { take: 1, select: { url: true } },
       },
     }),
+    prisma.checkSession.findMany({
+      where: { companyId: me.id },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true, fullName: true, licenseId: true, verdict: true,
+        riskScore: true, totalHits: true, createdAt: true,
+      },
+    }),
+    prisma.checkSession.groupBy({
+      by: ["verdict"],
+      where: { companyId: me.id, verdict: { not: null } },
+      _count: { _all: true },
+    }),
+    prisma.checkSession.findMany({
+      where: { companyId: me.id, createdAt: { gte: new Date(Date.now() - 30 * 86400_000) } },
+      select: { createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
+
+  // 30-day sparkline of check counts
+  const dailyCounts: number[] = new Array(30).fill(0);
+  const startDay = new Date(); startDay.setHours(0, 0, 0, 0); startDay.setDate(startDay.getDate() - 29);
+  for (const c of last30Checks) {
+    const day = Math.floor((c.createdAt.getTime() - startDay.getTime()) / 86400_000);
+    if (day >= 0 && day < 30) dailyCounts[day]++;
+  }
+
+  const verdictMap = Object.fromEntries(
+    verdictBreakdown.map((v) => [v.verdict || "", v._count._all])
+  );
+  const totalVerdicts = (verdictMap.APPROVE || 0) + (verdictMap.REVIEW || 0) + (verdictMap.DECLINE || 0);
+
+  // Onboarding checklist — based on actual data
+  const checklist = [
+    {
+      key: "first_check",
+      label: "Run your first Rent Report",
+      href: "/check",
+      done: recentChecks.length > 0,
+      hint: "See the cross-source verdict on a sample renter",
+    },
+    {
+      key: "upload_entry",
+      label: "Add a flagged renter to your DNR list",
+      href: "/dashboard/upload",
+      done: myEntriesCount > 0,
+      hint: "Build your private network on top of the public registry",
+    },
+    {
+      key: "billing",
+      label: plan.slug === "free" ? "Choose a paid plan when ready" : "Verify your subscription is active",
+      href: "/dashboard/billing",
+      done: plan.slug !== "free" && me.stripeStatus === "active",
+      hint: plan.slug === "free" ? "Free trial: 10 checks. Pro/Pro+ unlock API + more checks" : undefined,
+    },
+    ...(plan.apiAccess
+      ? [{
+          key: "api_key",
+          label: "Generate your API key",
+          href: "/dashboard/api",
+          done: Boolean(me.apiKeyHash),
+          hint: "Integrate the Rent Report into your booking flow",
+        }]
+      : []),
+  ];
 
   return (
     <div className="space-y-6 fade-in">
       {searchParams.welcome && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 fade-in">
-          <span className="font-semibold">Welcome to DNR Registry.</span> Upload your first incident to get started.
+          <span className="font-semibold">Welcome to DNR Registry.</span> Run your first Rent Report below — 10 free checks to start.
         </div>
       )}
 
       <header>
         <h1 className="text-2xl font-bold text-white">Welcome back, {me.name}</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Manage your company's DNR entries, reports, and disputes.
+          {plan.label} plan · {plan.slug === "free" || usage.isUnlimited
+            ? plan.slug === "free" ? `${me.checksUsedThisPeriod} of ${plan.trialChecks} trial checks used`
+              : "Unlimited"
+            : `${usage.remaining} of ${usage.limit} checks left this period`}
         </p>
       </header>
 
+      <OnboardingChecklist items={checklist} />
+
+      {/* Stat cards with sparklines */}
       <div className="grid gap-3 md:grid-cols-4">
-        <Stat label="Your entries" value={myCount} icon={<EntryIcon />} accent />
-        <Stat label="Network total" value={totalEntries} icon={<NetworkIcon />} />
-        <Stat label="Member companies" value={totalCompanies} icon={<CompanyIcon />} />
-        <Stat label="Reports filed" value={totalReports} icon={<ReportIcon />} />
+        <StatCard
+          label="Rent Reports"
+          value={recentChecks.length === 0 ? "—" : me.checksUsedThisPeriod.toString()}
+          sub={usage.isUnlimited ? "this period" : `of ${usage.limit} this period`}
+          accent
+          spark={dailyCounts}
+        />
+        <StatCard
+          label="Your DNR entries"
+          value={myEntriesCount}
+          sub="added by your company"
+        />
+        <StatCard
+          label="Network total"
+          value={totalEntries}
+          sub="across all sources"
+        />
+        <StatCard
+          label="Member companies"
+          value={totalCompanies}
+          sub="trusted operators"
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <div className="card overflow-hidden md:col-span-2">
-          <div className="flex items-center justify-between border-b border-ink-800 px-5 py-4">
-            <h2 className="font-semibold text-white">Recent entries</h2>
-            <div className="flex items-center gap-2">
-              <Link href="/dashboard/entries" className="btn-link">View all →</Link>
-              <Link href="/dashboard/upload" className="btn-primary">+ New</Link>
+        {/* Verdict breakdown */}
+        <div className="card p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+            Your verdict mix
+          </h2>
+          {totalVerdicts === 0 ? (
+            <div className="mt-6 flex flex-col items-center gap-2 py-4 text-center text-sm text-neutral-500">
+              <span className="grid size-10 place-items-center rounded-full bg-ink-800 text-neutral-400">
+                <svg className="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 2a8 8 0 1 1-8 8" strokeLinecap="round" />
+                </svg>
+              </span>
+              No checks yet
             </div>
-          </div>
-          {recent.length === 0 ? (
+          ) : (
+            <div className="mt-4 space-y-3">
+              <VerdictRow
+                label="Approve"
+                count={verdictMap.APPROVE || 0}
+                total={totalVerdicts}
+                color="bg-emerald-500"
+              />
+              <VerdictRow
+                label="Review"
+                count={verdictMap.REVIEW || 0}
+                total={totalVerdicts}
+                color="bg-amber-500"
+              />
+              <VerdictRow
+                label="Decline"
+                count={verdictMap.DECLINE || 0}
+                total={totalVerdicts}
+                color="bg-red-500"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Recent activity */}
+        <div className="card md:col-span-2 overflow-hidden">
+          <header className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+              Recent Rent Reports
+            </h2>
+            <Link href="/check" className="btn-primary">+ New check</Link>
+          </header>
+          {recentChecks.length === 0 ? (
             <div className="px-5 py-8 text-center">
-              <p className="text-sm text-neutral-400">You haven't uploaded anyone yet.</p>
-              <Link className="btn-primary mt-3 inline-flex" href="/dashboard/upload">Upload your first entry</Link>
+              <p className="text-sm text-neutral-400">You haven't run any Rent Reports yet.</p>
+              <Link href="/check" className="btn-primary mt-3 inline-flex">Run your first check</Link>
             </div>
           ) : (
             <ul className="divide-y divide-ink-800">
-              {recent.map((r) => (
+              {recentChecks.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/check/${c.id}`}
+                    className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-ink-800/40"
+                  >
+                    <VerdictDot verdict={c.verdict} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="truncate text-sm font-medium text-white">
+                          {c.fullName || <em className="text-neutral-500">no name</em>}
+                        </span>
+                        {c.licenseId && <span className="font-mono text-[11px] text-neutral-500">{c.licenseId}</span>}
+                      </div>
+                      <div className="text-[11px] text-neutral-500">
+                        {c.totalHits} {c.totalHits === 1 ? "hit" : "hits"} · risk {c.riskScore ?? 0}
+                      </div>
+                    </div>
+                    <VerdictPill verdict={c.verdict} />
+                    <span className="hidden text-xs text-neutral-500 sm:block">{relTime(c.createdAt)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* My recent entries */}
+        <div className="card overflow-hidden">
+          <header className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+              Recent entries you added
+            </h2>
+            <Link href="/dashboard/entries" className="btn-link">View all →</Link>
+          </header>
+          {recentEntries.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm text-neutral-400">No entries yet.</p>
+              <Link href="/dashboard/upload" className="btn-primary mt-3 inline-flex">Upload an entry</Link>
+            </div>
+          ) : (
+            <ul className="divide-y divide-ink-800">
+              {recentEntries.map((r) => (
                 <li key={r.id}>
                   <Link
                     href={`/entry/${r.id}`}
@@ -80,7 +271,6 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
                       <div className="truncate text-xs text-neutral-500">{r.primaryReason}</div>
                     </div>
                     <SeverityPill severity={r.severity} />
-                    <span className="text-xs text-neutral-500">{r.createdAt.toISOString().slice(0, 10)}</span>
                   </Link>
                 </li>
               ))}
@@ -88,51 +278,107 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
           )}
         </div>
 
+        {/* Setup health */}
         <div className="card p-5">
-          <h2 className="font-semibold text-white">Quick actions</h2>
-          <div className="mt-4 space-y-2">
-            <ActionLink href="/dashboard/upload" icon="+" label="Upload new entry" sub="Capture license + reason" />
-            <ActionLink href="/dashboard/entries" icon="◇" label="My entries" sub="Edit, archive, or update" />
-            <ActionLink href="/dashboard/reports" icon="⤴" label="My reports" sub="Corroborate other entries" />
-            <ActionLink href="/" icon="⌕" label="Search registry" sub="Look up before you rent" />
-          </div>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Setup health</h2>
+          <ul className="mt-3 space-y-2">
+            <HealthRow label="Stripe Identity" ok={isStripeConfigured()} note={isStripeConfigured() ? "Configured" : "Set STRIPE_SECRET_KEY"} />
+            <HealthRow label="Checkr (criminal)" ok={isCheckrConfigured()} note={isCheckrConfigured() ? "Configured" : "Set CHECKR_API_KEY"} />
+            <HealthRow label="Stripe Billing" ok={Boolean(process.env.STRIPE_PRICE_PRO)} note={process.env.STRIPE_PRICE_PRO ? "Live" : "Set STRIPE_PRICE_*"} />
+            <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photos & uploads" />
+          </ul>
+          <p className="mt-3 border-t border-ink-800 pt-3 text-[11px] text-neutral-500">
+            All four green = full feature set live for your customers.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, icon, accent }: { label: string; value: number; icon: React.ReactNode; accent?: boolean }) {
+function StatCard({
+  label, value, sub, accent, spark,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  accent?: boolean;
+  spark?: number[];
+}) {
   return (
-    <div className={`card overflow-hidden ${accent ? "border-red-500/30 bg-red-500/5" : ""}`}>
-      <div className="flex items-center gap-3 p-4">
-        <div className={`grid size-10 place-items-center rounded-lg ${accent ? "bg-red-500/15 text-red-300" : "bg-ink-800 text-neutral-400"}`}>
-          {icon}
-        </div>
+    <div className={`card overflow-hidden p-4 ${accent ? "border-red-500/30 bg-red-500/5" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <div className={`text-2xl font-bold ${accent ? "text-red-300" : "text-white"}`}>{value.toLocaleString()}</div>
+          <div className={`text-2xl font-bold ${accent ? "text-red-300" : "text-white"}`}>
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </div>
           <div className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</div>
         </div>
+        {spark && spark.length > 0 && spark.some((v) => v > 0) && (
+          <Sparkline values={spark} width={70} height={28} color={accent ? "rgb(248 113 113)" : "rgb(96 165 250)"} />
+        )}
+      </div>
+      {sub && <div className="mt-2 border-t border-ink-800 pt-2 text-[11px] text-neutral-500">{sub}</div>}
+    </div>
+  );
+}
+
+function VerdictRow({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+  const pct = total === 0 ? 0 : Math.round((count / total) * 100);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-sm">
+        <span className="text-neutral-300">{label}</span>
+        <span className="text-neutral-400">{count} <span className="text-neutral-500">· {pct}%</span></span>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
+        <div className={`h-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
 
-function ActionLink({ href, icon, label, sub }: { href: string; icon: string; label: string; sub: string }) {
+function VerdictDot({ verdict }: { verdict: string | null }) {
+  const cls =
+    verdict === "DECLINE" ? "bg-red-500" :
+    verdict === "REVIEW" ? "bg-amber-500" :
+    verdict === "APPROVE" ? "bg-emerald-500" : "bg-neutral-500";
+  return <span className={`size-2 shrink-0 rounded-full ${cls}`} />;
+}
+
+function VerdictPill({ verdict }: { verdict: string | null }) {
+  if (!verdict) return null;
+  const cls =
+    verdict === "DECLINE" ? "bg-red-500/15 text-red-300 ring-red-500/30" :
+    verdict === "REVIEW" ? "bg-amber-500/15 text-amber-300 ring-amber-500/30" :
+    "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30";
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-ink-800">
-      <div className="grid size-9 place-items-center rounded-md bg-ink-800 text-base font-semibold text-neutral-300 ring-1 ring-ink-700">
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-white">{label}</div>
-        <div className="text-xs text-neutral-500">{sub}</div>
-      </div>
-    </Link>
+    <span className={`pill ring-1 ring-inset ${cls}`}>
+      {verdict.toLowerCase()}
+    </span>
   );
 }
 
-function EntryIcon() { return <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 3h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 8h6M7 12h4" strokeLinecap="round"/></svg>; }
-function NetworkIcon() { return <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="10" cy="10" r="6"/><path d="M4 10h12M10 4v12"/></svg>; }
-function CompanyIcon() { return <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 17h14M5 17V7l5-3 5 3v10M9 11h2M9 14h2"/></svg>; }
-function ReportIcon() { return <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 3v10m0 0-3-3m3 3 3-3M3 17h14"/></svg>; }
+function HealthRow({ label, ok, note }: { label: string; ok: boolean; note?: string }) {
+  return (
+    <li className="flex items-center justify-between rounded border border-ink-700 bg-ink-800/30 p-2.5">
+      <div className="flex items-center gap-2">
+        <span className={`size-2 rounded-full ${ok ? "bg-emerald-500" : "bg-amber-500"}`} />
+        <span className="text-sm text-white">{label}</span>
+      </div>
+      <span className="text-[11px] text-neutral-400">{note}</span>
+    </li>
+  );
+}
+
+function relTime(d: Date): string {
+  const diff = Date.now() - d.getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.floor(h / 24);
+  if (days < 30) return `${days}d ago`;
+  return d.toISOString().slice(0, 10);
+}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import { getSession } from "@/lib/session";
 import { LogoutButton } from "@/components/LogoutButton";
+import { MobileNav } from "@/components/MobileNav";
 
 export const metadata: Metadata = {
   title: "DNR Registry — Do Not Rent List",
@@ -31,7 +32,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <span className="text-neutral-500"> Registry</span>
               </span>
             </Link>
-            <nav className="flex items-center gap-1 text-sm">
+            {/* Desktop nav */}
+            <nav className="hidden items-center gap-1 text-sm md:flex">
               {signedIn ? (
                 <>
                   <NavLink href="/search" label="Search" />
@@ -54,6 +56,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               )}
             </nav>
+
+            {/* Mobile nav (hamburger drawer) */}
+            <MobileNav signedIn={signedIn} signOut={signedIn ? <LogoutButton /> : null} />
           </div>
         </header>
         <main className="mx-auto min-h-[calc(100vh-9rem)] max-w-6xl px-5 py-8">{children}</main>
