@@ -64,6 +64,52 @@ const data: Extracted[] = JSON.parse(readFileSync(extractedPath, "utf8"));
     });
   }
 
+  console.log("→ ensuring sources…");
+  const supremeSource = await prisma.source.upsert({
+    where: { slug: "supreme-sport-rental" },
+    update: {
+      lastSyncedAt: new Date(),
+      url: "https://supremesportrental.com/pages/do-not-rent-list",
+    },
+    create: {
+      slug: "supreme-sport-rental",
+      name: "Supreme Sport Rental",
+      kind: "partner",
+      url: "https://supremesportrental.com/pages/do-not-rent-list",
+      region: "South Florida",
+      description: "Public Do Not Rent list maintained by Supreme Sport Rental. Imported nightly.",
+      trustScore: 80,
+      lastSyncedAt: new Date(),
+      syncFrequency: "daily",
+    },
+  });
+  await prisma.source.upsert({
+    where: { slug: "network-reports" },
+    update: {},
+    create: {
+      slug: "network-reports",
+      name: "Network Reports",
+      kind: "network",
+      region: "All",
+      description: "Direct uploads from verified DNR Registry member companies. Highest confidence — first-party reports.",
+      trustScore: 95,
+      syncFrequency: "real-time",
+    },
+  });
+  await prisma.source.upsert({
+    where: { slug: "manual-disputes" },
+    update: {},
+    create: {
+      slug: "manual-disputes",
+      name: "Disputed Records",
+      kind: "manual",
+      region: "All",
+      description: "Entries currently under dispute by the listed individual. Treat with caution.",
+      trustScore: 50,
+      syncFrequency: "manual",
+    },
+  });
+
   console.log("→ ensuring companies…");
   const passwordHash = await bcrypt.hash("admin1234", 10);
   const seedCo = await prisma.company.upsert({
@@ -155,6 +201,7 @@ const data: Extracted[] = JSON.parse(readFileSync(extractedPath, "utf8"));
         severity: curated?.severity || (r.licenseId ? "MEDIUM" : "MEDIUM"),
         status: r.name.includes("Shaddai") ? "REFORMED" : "ACTIVE",
         importedFrom: "supremesportrental.com",
+        sourceId: supremeSource.id,
         sourceUrl: "https://supremesportrental.com/pages/do-not-rent-list",
         createdById: seedCo.id,
         reasons: { create: [{ text: r.reason || curated?.primaryReason || "—" }] },

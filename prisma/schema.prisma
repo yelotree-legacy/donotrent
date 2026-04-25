@@ -28,6 +28,28 @@ model Company {
   auditEvents     AuditEvent[]
 }
 
+// A "source" is one origin of DNR data — e.g. a partner rental company's
+// public DNR page, or our own network of operator uploads. Cross-check
+// queries aggregate matches across every source.
+model Source {
+  id              String     @id @default(cuid())
+  slug            String     @unique
+  name            String
+  kind            String     @default("scraped") // scraped | network | manual | partner
+  url             String?
+  region          String?    // "South Florida", "National", etc.
+  description     String?
+  trustScore      Int        @default(70)        // 0-100, used in scoring weight
+  lastSyncedAt    DateTime?
+  syncFrequency   String?    // "daily" | "weekly" | "manual"
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+
+  entries         DnrEntry[]
+
+  @@index([slug])
+}
+
 // Core record. One row per person flagged on the do-not-rent list.
 // fullName + licenseId are the two primary search keys.
 model DnrEntry {
@@ -61,8 +83,10 @@ model DnrEntry {
   incidentState   String?
 
   // Provenance
+  sourceId        String?
+  source          Source?       @relation(fields: [sourceId], references: [id])
   sourceUrl       String?       // e.g. supremesportrental original URL
-  importedFrom    String?       // "supremesportrental.com" for seeded entries
+  importedFrom    String?       // "supremesportrental.com" for seeded entries (legacy)
   createdById     String?
   createdBy       Company?      @relation("EntryCreator", fields: [createdById], references: [id])
 
@@ -79,6 +103,7 @@ model DnrEntry {
   @@index([licenseIdNorm])
   @@index([lastName])
   @@index([status])
+  @@index([sourceId])
 }
 
 // Many-to-many: each entry can be tagged with multiple violation categories.

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { SeverityPill, StatusPill } from "@/components/Pill";
 import { Lightbox } from "@/components/Lightbox";
 import { requireCompany } from "@/lib/auth";
+import { crossCheck } from "@/lib/cross-check";
 
 export default async function EntryPage({ params }: { params: { id: string } }) {
   const me = await requireCompany();
@@ -22,6 +23,15 @@ export default async function EntryPage({ params }: { params: { id: string } }) 
 
   const aliases: string[] = entry.aliases ? JSON.parse(entry.aliases) : [];
   const heroPhoto = entry.photos[0];
+
+  // Cross-source: who else has this person?
+  const xc = await crossCheck({
+    licenseId: entry.licenseId || undefined,
+    fullName: entry.fullName,
+    dateOfBirth: entry.dateOfBirth?.toISOString().slice(0, 10),
+  });
+  const otherHits = xc.hits.filter((h) => h.id !== entry.id);
+  const otherSources = xc.sources.filter((s) => s.hits > 0 && s.entryIds.some((id) => id !== entry.id));
 
   return (
     <article className="space-y-6 fade-in">
@@ -122,6 +132,39 @@ export default async function EntryPage({ params }: { params: { id: string } }) 
               </ul>
             </div>
           )}
+
+          {otherHits.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+                Also flagged across {otherSources.length} other source{otherSources.length === 1 ? "" : "s"}
+              </h2>
+              <ul className="mt-3 space-y-2">
+                {otherHits.map((h) => (
+                  <li key={h.id}>
+                    <Link href={`/entry/${h.id}`} className="flex items-center gap-3 rounded-lg border border-ink-700 bg-ink-800/30 p-3 transition hover:bg-ink-800/60">
+                      <div className="size-10 shrink-0 overflow-hidden rounded-md bg-ink-800 ring-1 ring-ink-700">
+                        {h.thumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={h.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-white">{h.fullName}</div>
+                        <div className="truncate text-xs text-neutral-500">{h.primaryReason}</div>
+                      </div>
+                      <div className="shrink-0 text-right text-xs">
+                        {h.source && <div className="text-neutral-300">{h.source.name}</div>}
+                        <div className="text-neutral-500">
+                          {h.matchedOn.includes("license") ? "license · " : ""}
+                          {h.matchedOn.includes("name") ? "name" : ""}
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
 
         <aside className="space-y-6">
@@ -133,6 +176,23 @@ export default async function EntryPage({ params }: { params: { id: string } }) 
               <Lightbox photos={entry.photos} />
             </div>
           )}
+
+          <div className="card p-5">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-400">Run a Rent Report</h2>
+            <p className="text-xs text-neutral-400">
+              See this person's full cross-source verdict, risk score, and evidence trail.
+            </p>
+            <Link
+              href={`/check?${new URLSearchParams({
+                ...(entry.licenseId ? { license: entry.licenseId } : {}),
+                name: entry.fullName,
+                ...(entry.dateOfBirth ? { dob: entry.dateOfBirth.toISOString().slice(0, 10) } : {}),
+              }).toString()}`}
+              className="btn-primary mt-3 w-full justify-center"
+            >
+              Run cross-check →
+            </Link>
+          </div>
 
           <div className="card p-5">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-400">Source</h2>

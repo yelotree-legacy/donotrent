@@ -33,7 +33,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               <NavLink href="/" label="Search" />
+              <NavLink href="/check" label="Rent Report" />
               <NavLink href="/browse" label="Browse" />
+              <NavLink href="/sources" label="Sources" />
               {signedIn ? (
                 <>
                   <NavLink href="/dashboard" label="Dashboard" />
