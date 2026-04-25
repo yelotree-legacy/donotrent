@@ -7,11 +7,15 @@ import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { getPlan, checksRemaining } from "@/lib/plans";
 import { isStripeConfigured } from "@/lib/stripe";
 import { isCheckrConfigured } from "@/lib/checks/checkr";
+import { isFreeTier } from "@/lib/billing-mode";
 
 export default async function DashboardHome({ searchParams }: { searchParams: { welcome?: string } }) {
   const me = (await requireCompany())!;
+  const free = isFreeTier();
   const plan = getPlan(me.plan);
-  const usage = checksRemaining({ plan: me.plan, checksUsedThisPeriod: me.checksUsedThisPeriod });
+  const usage = free
+    ? { remaining: Infinity, limit: 0, isUnlimited: true }
+    : checksRemaining({ plan: me.plan, checksUsedThisPeriod: me.checksUsedThisPeriod });
 
   // Pull a wide-but-bounded set of dashboard data in parallel.
   const periodStart = me.currentPeriodStart || new Date(Date.now() - 30 * 86400_000);
@@ -89,19 +93,19 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
       hint: "Build your private network on top of the public registry",
     },
     {
-      key: "billing",
-      label: plan.slug === "free" ? "Choose a paid plan when ready" : "Verify your subscription is active",
-      href: "/dashboard/billing",
-      done: plan.slug !== "free" && me.stripeStatus === "active",
-      hint: plan.slug === "free" ? "Free trial: 10 checks. Pro/Pro+ unlock API + more checks" : undefined,
+      key: "api_key",
+      label: "Generate your API key",
+      href: "/dashboard/api",
+      done: Boolean(me.apiKeyHash),
+      hint: "Integrate the Rent Report into your booking flow",
     },
-    ...(plan.apiAccess
+    ...(!free && plan.slug === "free"
       ? [{
-          key: "api_key",
-          label: "Generate your API key",
-          href: "/dashboard/api",
-          done: Boolean(me.apiKeyHash),
-          hint: "Integrate the Rent Report into your booking flow",
+          key: "billing",
+          label: "Choose a plan when ready",
+          href: "/dashboard/billing",
+          done: false,
+          hint: "Free trial: 10 checks. Pro/Pro+ unlock more.",
         }]
       : []),
   ];
@@ -117,10 +121,15 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
       <header>
         <h1 className="text-2xl font-bold text-white">Welcome back, {me.name}</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          {plan.label} plan · {plan.slug === "free" || usage.isUnlimited
-            ? plan.slug === "free" ? `${me.checksUsedThisPeriod} of ${plan.trialChecks} trial checks used`
-              : "Unlimited"
-            : `${usage.remaining} of ${usage.limit} checks left this period`}
+          {free
+            ? "Free for verified rental operators · unlimited cross-source checks"
+            : `${plan.label} plan · ${
+                usage.isUnlimited
+                  ? "Unlimited"
+                  : plan.slug === "free"
+                    ? `${me.checksUsedThisPeriod} of ${plan.trialChecks} trial checks used`
+                    : `${usage.remaining} of ${usage.limit} checks left this period`
+              }`}
         </p>
       </header>
 

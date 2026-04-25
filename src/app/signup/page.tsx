@@ -32,6 +32,9 @@ async function signupAction(formData: FormData) {
       state,
       passwordHash: await hashPassword(password),
       verified: false,
+      // In free-tier mode, all new accounts default to enterprise (= unlimited).
+      // Switch back to "free" trial when paid tiers re-enable.
+      plan: process.env.BILLING_MODE === "paid" ? "free" : "enterprise",
     },
   });
 

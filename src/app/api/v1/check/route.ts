@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyApiKey } from "@/lib/api-key";
 import { getPlan } from "@/lib/plans";
 import { canConsumeCheck, incrementCheck } from "@/lib/usage";
+import { isFreeTier } from "@/lib/billing-mode";
 import { crossCheck } from "@/lib/cross-check";
 import { checkOfac } from "@/lib/checks/ofac";
 import { prisma } from "@/lib/db";
@@ -35,9 +36,9 @@ export async function POST(req: NextRequest) {
   const auth = await verifyApiKey(m[1].trim());
   if (!auth) return err(401, "invalid_token", "Invalid or revoked API key.");
 
-  // 2. Plan gating
+  // 2. Plan gating — bypassed in free-tier mode.
   const plan = getPlan(auth.plan);
-  if (!plan.apiAccess) {
+  if (!isFreeTier() && !plan.apiAccess) {
     return err(403, "plan_required", "API access requires Pro or Pro+ plan.", {
       current_plan: plan.slug,
       upgrade_url: "/pricing",

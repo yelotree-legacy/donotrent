@@ -1,9 +1,37 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PLANS, PUBLIC_PLAN_SLUGS } from "@/lib/plans";
 import { requireCompany } from "@/lib/auth";
+import { isFreeTier } from "@/lib/billing-mode";
 import { ChoosePlanButton } from "./ChoosePlanButton";
 
 export default async function PricingPage({ searchParams }: { searchParams: { checkout?: string } }) {
+  if (isFreeTier()) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 py-12 text-center fade-in">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-emerald-300">
+          Free for verified rental operators
+        </div>
+        <h1 className="text-4xl font-bold text-white md:text-5xl">No subscription. No per-check fee.</h1>
+        <p className="text-base text-neutral-300">
+          DNR Registry is currently free for the rental industry. Sign up, run unlimited cross-source DNR + OFAC checks, and integrate the API into your booking flow at no cost.
+        </p>
+        <ul className="mx-auto mt-6 max-w-md space-y-2 text-left text-sm text-neutral-300">
+          <li className="flex gap-2"><span className="text-emerald-400">✓</span> Unlimited cross-source DNR checks</li>
+          <li className="flex gap-2"><span className="text-emerald-400">✓</span> OFAC sanctions screening on every check</li>
+          <li className="flex gap-2"><span className="text-emerald-400">✓</span> API access for booking-flow integration</li>
+          <li className="flex gap-2"><span className="text-emerald-400">✓</span> Bulk CSV upload of your own list</li>
+          <li className="flex gap-2"><span className="text-neutral-500">+</span> Optional Stripe Identity ($1.50/check, passthrough)</li>
+          <li className="flex gap-2"><span className="text-neutral-500">+</span> Optional Checkr criminal background ($5–15/check, passthrough)</li>
+        </ul>
+        <div className="pt-4">
+          <Link href="/signup" className="btn-primary text-base px-6 py-3">Create free account</Link>
+        </div>
+        <p className="text-xs text-neutral-500">No credit card required · Cancel anytime · Your data is yours</p>
+      </div>
+    );
+  }
+
   const me = await requireCompany();
 
   return (

@@ -43,15 +43,12 @@ export function MobileNav({
         { href: "/check", label: "Rent Report" },
         { href: "/browse", label: "Browse" },
         { href: "/sources", label: "Sources" },
-        { href: "/pricing", label: "Pricing" },
         { href: "/dashboard", label: "Dashboard" },
         { href: "/dashboard/api", label: "API" },
-        { href: "/dashboard/billing", label: "Billing" },
         { href: "/dashboard/upload", label: "+ Upload entry", primary: true },
       ]
     : [
         { href: "/", label: "Home" },
-        { href: "/pricing", label: "Pricing" },
         { href: "/login", label: "Sign in" },
         { href: "/signup", label: "Register", primary: true },
       ];

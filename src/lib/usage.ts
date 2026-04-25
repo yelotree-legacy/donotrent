@@ -2,6 +2,7 @@
 
 import { prisma } from "./db";
 import { checksRemaining, getPlan } from "./plans";
+import { isFreeTier } from "./billing-mode";
 
 export type UsageCheckResult =
   | { ok: true; remaining: number; isUnlimited: boolean }
@@ -15,6 +16,10 @@ export type UsageCheckResult =
 export async function canConsumeCheck(companyId: string | null | undefined): Promise<UsageCheckResult> {
   if (!companyId) {
     // Anonymous searches don't count; only logged-in companies have quotas.
+    return { ok: true, remaining: Infinity, isUnlimited: true };
+  }
+  // Free-tier mode: every signed-in company gets unlimited checks.
+  if (isFreeTier()) {
     return { ok: true, remaining: Infinity, isUnlimited: true };
   }
   const co = await prisma.company.findUnique({
