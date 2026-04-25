@@ -67,7 +67,29 @@ npm run db:seed:full      # imports 263 entries with OCR-extracted licenses
 From the Vercel dashboard → **Deployments** → click the **⋯** menu on the
 latest deployment → **Redeploy**. The build will now succeed.
 
-## 8. Custom domain
+## 8. (Optional) Stripe Identity for ID verification
+
+The `/check` flow can hand off to **Stripe Identity** for document scanning,
+liveness check, and selfie matching ($1.50 per verification).
+
+1. **Stripe dashboard** → **Developers → API keys** → copy the **Secret key**
+2. In Vercel **Settings → Environment Variables**, add:
+   - `STRIPE_SECRET_KEY` = `sk_live_…` (or `sk_test_…` for testing)
+3. **Stripe dashboard** → **Developers → Webhooks** → **Add endpoint**
+   - URL: `https://<your-domain>/api/idv/webhook`
+   - Events:
+     - `identity.verification_session.verified`
+     - `identity.verification_session.requires_input`
+     - `identity.verification_session.canceled`
+     - `identity.verification_session.processing`
+4. Copy the **Signing secret** → in Vercel, add:
+   - `STRIPE_WEBHOOK_SECRET` = `whsec_…`
+5. Redeploy. The IDV card on `/check/[id]` will switch from "not configured" to "Generate verification link".
+
+When unset, IDV gracefully degrades — the card shows a notice and the rest of the
+Rent Report works normally.
+
+## 9. Custom domain
 
 Project **Settings → Domains** → **Add Domain** → enter your domain.
 
@@ -80,7 +102,7 @@ Type: CNAME www  cname.vercel-dns.com
 
 DNS propagates in 1–60 minutes; Vercel auto-provisions the TLS cert.
 
-## 9. Local development against Vercel Postgres
+## 10. Local development against Vercel Postgres
 
 After step 3, you can develop locally against the same DB:
 

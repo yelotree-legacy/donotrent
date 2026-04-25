@@ -26,6 +26,7 @@ model Company {
   reports         Report[]
   searchLogs      SearchLog[]
   auditEvents     AuditEvent[]
+  checks          CheckSession[] @relation("CompanyChecks")
 }
 
 // A "source" is one origin of DNR data — e.g. a partner rental company's
@@ -190,6 +191,56 @@ model SearchLog {
   ip          String?
   createdAt   DateTime @default(now())
   @@index([createdAt])
+}
+
+// One row per Rent Report run. Persists the cross-source verdict + any
+// Stripe Identity verification kicked off for the renter being checked.
+model CheckSession {
+  id              String     @id @default(cuid())
+
+  // Inputs
+  fullName        String?
+  licenseId       String?
+  dateOfBirth     DateTime?
+
+  // Cached cross-source verdict
+  verdict         String?    // APPROVE | REVIEW | DECLINE
+  riskScore       Int?
+  totalHits       Int        @default(0)
+  matchedSources  Int        @default(0)
+  worstSeverity   String?
+
+  // Stripe Identity state
+  // status: not_started | pending | verified | requires_input | canceled | failed
+  idvStatus       String     @default("not_started")
+  idvSessionId    String?    @unique // Stripe verification_session id
+  idvClientSecret String?
+  idvUrl          String?
+  idvReturnUrl    String?
+
+  // Verified data extracted from the document
+  idvVerifiedName       String?
+  idvVerifiedFirstName  String?
+  idvVerifiedLastName   String?
+  idvVerifiedDob        DateTime?
+  idvDocType            String?
+  idvDocNumber          String?    // license number from IDV
+  idvDocCountry         String?
+  idvDocState           String?
+  idvDocExpiry          DateTime?
+  idvSelfieMatch        Boolean?
+  idvErrorCode          String?
+  idvCompletedAt        DateTime?
+
+  companyId       String?
+  company         Company?   @relation("CompanyChecks", fields: [companyId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([companyId])
+  @@index([createdAt])
+  @@index([idvSessionId])
 }
 
 // Tamper-evident log of mutations for trust.
