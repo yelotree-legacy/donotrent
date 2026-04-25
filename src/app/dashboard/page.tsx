@@ -263,7 +263,7 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className={`grid gap-6 ${me.isAdmin ? "md:grid-cols-2" : ""}`}>
         {/* My recent entries */}
         <div className="card overflow-hidden">
           <header className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
@@ -307,14 +307,16 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
           )}
         </div>
 
-        {/* Setup health */}
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Setup health</h2>
-          <ul className="mt-3 space-y-2">
-            <HealthRow label="Database" ok={true} note="Connected" />
-            <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photo uploads" />
-          </ul>
-        </div>
+        {/* Setup health — admin only */}
+        {me.isAdmin && (
+          <div className="card p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Setup health</h2>
+            <ul className="mt-3 space-y-2">
+              <HealthRow label="Database" ok={true} note="Connected" />
+              <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photo uploads" />
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Broker activity */}
