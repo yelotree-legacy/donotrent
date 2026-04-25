@@ -48,16 +48,27 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+          <div className="flex h-full flex-col">
+            <div className="flex-1">
+              <h2 className="font-semibold text-white">Bulk CSV import</h2>
+              <p className="mt-1 text-xs text-neutral-400">
+                Paste a CSV of flagged renters and assign them to a source.
+              </p>
+            </div>
+            <a href="/dashboard/admin/import" className="btn-primary mt-3 justify-center">Open import →</a>
+          </div>
+        </div>
+        <div className="card p-5">
+          <div className="flex h-full flex-col">
+            <div className="flex-1">
               <h2 className="font-semibold text-white">Photo migration</h2>
-              <p className="text-xs text-neutral-400 mt-1">
+              <p className="mt-1 text-xs text-neutral-400">
                 Move imported photos from external CDNs to Vercel Blob.
               </p>
             </div>
-            <a href="/dashboard/admin/photo-migration" className="btn-ghost shrink-0">Open →</a>
+            <a href="/dashboard/admin/photo-migration" className="btn-ghost mt-3 justify-center">Open →</a>
           </div>
         </div>
         <OfacSyncCard />
