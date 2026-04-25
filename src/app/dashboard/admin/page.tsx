@@ -46,6 +46,20 @@ export default async function AdminPage() {
         ))}
       </div>
 
+      <div className="card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-white">Photo migration</h2>
+            <p className="text-xs text-neutral-400 mt-1">
+              Move imported photos from external CDNs to Vercel Blob (self-hosted).
+            </p>
+          </div>
+          <a href="/dashboard/admin/photo-migration" className="btn-primary">
+            Open migration tool →
+          </a>
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2">
         <div className="card p-5">
           <h2 className="font-semibold">Pending verification</h2>
