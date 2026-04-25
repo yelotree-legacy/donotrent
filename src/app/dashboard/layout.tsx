@@ -22,6 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLink href="/dashboard/entries" label="My entries" />
           <NavLink href="/dashboard/upload" label="+ New entry" />
           <NavLink href="/dashboard/reports" label="My reports" />
+          <NavLink href="/dashboard/broker-reviews" label="My broker reviews" />
           <NavLink href="/dashboard/api" label="API" />
           {!isFreeTier() && <NavLink href="/dashboard/billing" label="Billing" />}
           {me.isAdmin && <NavLink href="/dashboard/admin" label="Admin" />}

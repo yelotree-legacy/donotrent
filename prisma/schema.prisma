@@ -70,6 +70,7 @@ model Broker {
   status          String         @default("ACTIVE") // ACTIVE | DISPUTED | RESOLVED
 
   reviews         BrokerReview[]
+  disputes        BrokerDispute[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -95,12 +96,41 @@ model BrokerReview {
   damageAmount    Float?
   resolved        Boolean   @default(false)
 
+  disputes        BrokerDispute[]
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([brokerId])
   @@index([reviewerCompanyId])
   @@index([createdAt])
+}
+
+// Public dispute against a broker listing or a specific review. Brokers
+// (or someone representing them) can challenge without needing an
+// operator account. Goes into a moderation queue.
+model BrokerDispute {
+  id              String         @id @default(cuid())
+  brokerId        String
+  broker          Broker         @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  reviewId        String?
+  review          BrokerReview?  @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+
+  filerName       String
+  filerContact    String
+  filerRole       String?        // broker | associate | other
+  reason          String         // rebuttal / explanation
+
+  // status: OPEN | IN_REVIEW | RESOLVED | REJECTED
+  status          String         @default("OPEN")
+  resolvedAt      DateTime?
+  resolution      String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([brokerId])
+  @@index([status])
 }
 
 // A "source" is one origin of DNR data — e.g. a partner rental company's

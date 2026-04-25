@@ -15,9 +15,14 @@ export default async function BrokerDetailPage({ params }: { params: { slug: str
         orderBy: { createdAt: "desc" },
         include: { reviewerCompany: { select: { id: true, name: true, city: true, state: true } } },
       },
+      disputes: {
+        where: { status: { in: ["OPEN", "IN_REVIEW"] } },
+        select: { id: true, status: true },
+      },
     },
   });
   if (!broker) return notFound();
+  const openDisputes = broker.disputes.length;
 
   const aliases: string[] = broker.aliases ? JSON.parse(broker.aliases) : [];
 
@@ -32,10 +37,28 @@ export default async function BrokerDetailPage({ params }: { params: { slug: str
     <article className="space-y-6 fade-in">
       <Link href="/brokers" className="btn-link">← All brokers</Link>
 
+      {openDisputes > 0 && (
+        <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+          <strong>{openDisputes} open dispute{openDisputes === 1 ? "" : "s"}.</strong> The broker (or someone representing them) has challenged this listing. Network admins are reviewing.
+        </div>
+      )}
+
       <header className="card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold text-white">{broker.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-bold text-white">{broker.name}</h1>
+              {broker.status === "DISPUTED" && (
+                <span className="pill bg-yellow-500/15 text-yellow-300 ring-1 ring-inset ring-yellow-500/30">
+                  Disputed
+                </span>
+              )}
+              {broker.status === "RESOLVED" && (
+                <span className="pill bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+                  Resolved
+                </span>
+              )}
+            </div>
             {aliases.length > 0 && (
               <p className="mt-1 text-sm text-neutral-400">a.k.a. {aliases.join(", ")}</p>
             )}
@@ -63,6 +86,11 @@ export default async function BrokerDetailPage({ params }: { params: { slug: str
               <span className="text-sm italic text-neutral-500">No reviews yet</span>
             )}
             <Link href={`/brokers/${broker.slug}/review`} className="btn-primary mt-3 inline-flex">+ Add review</Link>
+            <div className="mt-2">
+              <Link href={`/brokers/${broker.slug}/dispute`} className="text-[11px] text-neutral-500 underline hover:text-amber-300">
+                Dispute this listing
+              </Link>
+            </div>
           </div>
         </div>
       </header>
