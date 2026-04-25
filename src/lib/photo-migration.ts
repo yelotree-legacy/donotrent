@@ -6,6 +6,26 @@ import { prisma } from "./db";
 
 const BLOB_HOST = "blob.vercel-storage.com";
 
+/**
+ * Find the Vercel Blob read/write token regardless of what Vercel named the
+ * env var. The default is BLOB_READ_WRITE_TOKEN, but if you have multiple
+ * blob stores or connect via specific flows, Vercel may suffix the store
+ * name (e.g. `donotrent_BLOB_READ_WRITE_TOKEN`). Scan for any match.
+ */
+export function findBlobToken(): { token: string | null; name: string | null } {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    return { token: process.env.BLOB_READ_WRITE_TOKEN, name: "BLOB_READ_WRITE_TOKEN" };
+  }
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.endsWith("BLOB_READ_WRITE_TOKEN") && v) return { token: v, name: k };
+  }
+  return { token: null, name: null };
+}
+
+export function listBlobEnvNames(): string[] {
+  return Object.keys(process.env).filter((k) => k.includes("BLOB") || k.includes("VERCEL_BLOB"));
+}
+
 function isAlreadyOnBlob(url: string): boolean {
   return url.includes(BLOB_HOST);
 }
@@ -35,8 +55,9 @@ export async function migrateOnePhoto(photoId: string): Promise<{
   url?: string;
   error?: string;
 }> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return { ok: false, error: "BLOB_READ_WRITE_TOKEN not set" };
+  const { token } = findBlobToken();
+  if (!token) {
+    return { ok: false, error: "Blob token not found in env" };
   }
 
   const photo = await prisma.photo.findUnique({ where: { id: photoId } });
@@ -60,7 +81,6 @@ export async function migrateOnePhoto(photoId: string): Promise<{
 
   let blobUrl: string;
   try {
-    // Dynamic import — avoids loading @vercel/blob at module init
     const { put } = await import("@vercel/blob");
     const ext = extForContentType(contentType);
     const key = `imported/${photo.id}.${ext}`;
@@ -69,6 +89,7 @@ export async function migrateOnePhoto(photoId: string): Promise<{
       contentType,
       addRandomSuffix: false,
       allowOverwrite: true,
+      token, // pass explicitly in case the SDK can't auto-detect
     } as any);
     blobUrl = blob.url;
   } catch (e: any) {

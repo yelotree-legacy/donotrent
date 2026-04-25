@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCompany } from "@/lib/auth";
-import { getMigrationStatus } from "@/lib/photo-migration";
+import { getMigrationStatus, findBlobToken, listBlobEnvNames } from "@/lib/photo-migration";
 import { MigrationRunner } from "./MigrationRunner";
 
 export default async function PhotoMigrationPage() {
@@ -9,7 +9,9 @@ export default async function PhotoMigrationPage() {
   if (!me?.isAdmin) redirect("/dashboard");
 
   const status = await getMigrationStatus();
-  const blobConfigured = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  const { token, name: tokenName } = findBlobToken();
+  const blobConfigured = Boolean(token);
+  const blobEnvNames = listBlobEnvNames();
 
   return (
     <div className="space-y-6 fade-in">
@@ -24,8 +26,19 @@ export default async function PhotoMigrationPage() {
 
       {!blobConfigured && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          <strong>Blob not configured.</strong> Set <code className="rounded bg-amber-500/10 px-1 font-mono">BLOB_READ_WRITE_TOKEN</code> in
-          your Vercel environment (Storage tab → Blob → Connect to project).
+          <p><strong>Blob not configured.</strong> No <code className="rounded bg-amber-500/10 px-1 font-mono">*_BLOB_READ_WRITE_TOKEN</code> env var found in this deployment.</p>
+          <p className="mt-2 text-xs">
+            <strong>Detected blob-related env vars:</strong>{" "}
+            {blobEnvNames.length === 0 ? <em>(none)</em> : blobEnvNames.join(", ")}
+          </p>
+          <p className="mt-2 text-xs">
+            Fix: Vercel project → <strong>Storage</strong> → your Blob store → <strong>Connect to Project</strong> (all environments) → redeploy.
+          </p>
+        </div>
+      )}
+      {blobConfigured && tokenName && tokenName !== "BLOB_READ_WRITE_TOKEN" && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-xs text-blue-200">
+          Using non-default env var name: <code className="font-mono">{tokenName}</code>. Migration will work fine.
         </div>
       )}
 
