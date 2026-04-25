@@ -13,7 +13,7 @@ export function getStripe(): Stripe {
   }
   _stripe = new Stripe(key, {
     apiVersion: "2024-11-20.acacia" as any,
-    appInfo: { name: "DNR Registry", version: "0.1.0" },
+    appInfo: { name: "They Can't Be Trusted", version: "0.1.0" },
   });
   return _stripe;
 }

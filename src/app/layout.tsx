@@ -7,9 +7,22 @@ import { MobileNav } from "@/components/MobileNav";
 import { isFreeTier } from "@/lib/billing-mode";
 
 export const metadata: Metadata = {
-  title: "DNR Registry — Do Not Rent List",
+  metadataBase: new URL("https://theycantbetrusted.com"),
+  title: {
+    default: "They Can't Be Trusted — The rental industry's accountability network",
+    template: "%s · They Can't Be Trusted",
+  },
   description:
-    "A multi-tenant Do Not Rent registry for vehicle rental companies. Search by name or license ID, upload incidents, and protect your fleet.",
+    "Cross-source Do Not Rent + Broker Registry for vehicle rental operators. Search renters by name or license ID, review brokers, share what you've seen.",
+  openGraph: {
+    title: "They Can't Be Trusted",
+    description:
+      "Cross-source Do Not Rent + Broker Registry for vehicle rental operators.",
+    siteName: "They Can't Be Trusted",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "They Can't Be Trusted" },
+  robots: { index: true, follow: true },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -22,16 +35,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="sticky top-0 z-30 border-b border-ink-800/80 bg-ink-950/80 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-            <Link href="/" className="group flex items-center gap-2 font-bold tracking-tight">
-              <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white shadow-sm shadow-red-900/40 transition-transform group-hover:scale-105">
+            <Link href="/" className="group flex items-center gap-2.5 font-bold tracking-tight">
+              <span className="relative grid size-8 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-white shadow-sm shadow-red-900/40 transition-transform group-hover:scale-105">
+                {/* Warning triangle with exclamation mark — captures the 'caution' nature better than a checkmark */}
                 <svg className="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M2 4l6-2 6 2v6c0 2.5-2.5 4.5-6 5-3.5-.5-6-2.5-6-5V4z" strokeLinejoin="round" />
-                  <path d="m5 8 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M8 1.5 14.5 13H1.5L8 1.5Z" strokeLinejoin="round" />
+                  <path d="M8 6.5v3.5M8 11.75v.01" strokeLinecap="round" />
                 </svg>
               </span>
-              <span className="text-sm">
-                <span className="text-white">DNR</span>
-                <span className="text-neutral-500"> Registry</span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-sm">
+                  <span className="text-white">They Can't Be</span><span className="text-red-400"> Trusted</span>
+                </span>
+                <span className="hidden text-[9px] uppercase tracking-[0.18em] text-neutral-500 sm:block">
+                  Rental industry registry
+                </span>
               </span>
             </Link>
             {/* Desktop nav */}
@@ -67,9 +85,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="mx-auto min-h-[calc(100vh-9rem)] max-w-6xl px-5 py-8">{children}</main>
         <footer className="border-t border-ink-800/80 text-xs text-neutral-500">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-5 py-5">
-            <span>© DNR Registry · for verified rental operators only</span>
+            <span>© They Can't Be Trusted · for verified rental operators only</span>
             <span className="flex items-center gap-3">
-              <Link className="hover:text-white transition-colors" href="/dispute">File a dispute</Link>
+              <Link className="hover:text-white transition-colors" href="/dispute">File a renter dispute</Link>
+              <span className="text-neutral-700">·</span>
+              <Link className="hover:text-white transition-colors" href="/brokers">Brokers</Link>
               <span className="text-neutral-700">·</span>
               <a className="hover:text-white transition-colors" href="https://github.com/yelotree-legacy/donotrent" target="_blank" rel="noreferrer">Source</a>
             </span>

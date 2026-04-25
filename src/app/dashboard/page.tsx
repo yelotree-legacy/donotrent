@@ -138,7 +138,7 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
     <div className="space-y-6 fade-in">
       {searchParams.welcome && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 fade-in">
-          <span className="font-semibold">Welcome to DNR Registry.</span> Run your first Rent Report below — 10 free checks to start.
+          <span className="font-semibold">Welcome to They Can't Be Trusted.</span> Run your first Rent Report below — unlimited free checks while we're in early access.
         </div>
       )}
 

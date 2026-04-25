@@ -33,7 +33,7 @@ export default async function ApiPage() {
       <header>
         <h1 className="text-2xl font-bold text-white">API access</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Integrate the DNR Registry into your booking system. POST renter info, get back a verdict in milliseconds.
+          Integrate They Can't Be Trusted into your booking system. POST renter info, get back a verdict in milliseconds.
         </p>
       </header>
 

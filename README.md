@@ -1,4 +1,4 @@
-# DNR Registry — Do Not Rent List
+# They Can't Be Trusted — Rental industry registry
 
 A multi-tenant **Do Not Rent** registry for vehicle rental companies. Verified operators upload customer licenses + reasons; any company (or the public) can search by full name or license ID with exact, prefix, substring, alias, and fuzzy (Levenshtein) matching.
 

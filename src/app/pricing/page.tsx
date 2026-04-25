@@ -14,7 +14,7 @@ export default async function PricingPage({ searchParams }: { searchParams: { ch
         </div>
         <h1 className="text-4xl font-bold text-white md:text-5xl">No subscription. No per-check fee.</h1>
         <p className="text-base text-neutral-300">
-          DNR Registry is currently free for the rental industry. Sign up, run unlimited cross-source DNR + OFAC checks, and integrate the API into your booking flow at no cost.
+          They Can't Be Trusted is currently free for the rental industry. Sign up, run unlimited cross-source DNR + OFAC checks, review brokers, and integrate the API into your booking flow at no cost.
         </p>
         <ul className="mx-auto mt-6 max-w-md space-y-2 text-left text-sm text-neutral-300">
           <li className="flex gap-2"><span className="text-emerald-400">✓</span> Unlimited cross-source DNR checks</li>

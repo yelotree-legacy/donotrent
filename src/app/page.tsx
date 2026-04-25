@@ -22,11 +22,13 @@ export default async function MarketingHome() {
             {free ? "Free for verified rental operators" : "For verified rental operators"}
           </div>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white md:text-6xl">
-            Stop renting to the wrong people.
+            They Can't Be<span className="text-red-400"> Trusted</span>.
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-neutral-300 md:text-lg">
-            Cross-source Do Not Rent check + OFAC sanctions screening on every renter.
-            Pass / Review / Decline verdict in 60 seconds.{free ? " Free for the rental industry." : ""}
+          <p className="mx-auto mt-3 max-w-2xl text-base text-neutral-400 md:text-lg">
+            The rental industry's accountability network. Cross-source Do Not Rent + Broker Registry, in one place.
+          </p>
+          <p className="mx-auto mt-4 max-w-2xl text-sm text-neutral-300">
+            Pass / Review / Decline verdict in 60 seconds — on the renter <em>and</em> the broker who brought them.{free ? " Free for the rental industry." : ""}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link href="/signup" className="btn-primary text-base px-6 py-3">

@@ -28,7 +28,7 @@ export function OnboardingChecklist({ items }: { items: ChecklistItem[] }) {
               ? "Let's get you up and running"
               : done === total - 1
                 ? "Almost there!"
-                : "Make the most of DNR Registry"}
+                : "Make the most of They Can't Be Trusted"}
           </h2>
           <p className="mt-1 text-sm text-neutral-400">
             {done} of {total} steps complete
