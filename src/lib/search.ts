@@ -26,11 +26,17 @@ export type SearchHit = {
   matchKind: "exact_license" | "exact_name" | "prefix" | "substring" | "fuzzy" | "alias" | "category";
   score: number;
   categories: string[];
+  thumbnailUrl: string | null;
   createdById: string | null;
   createdAt: Date;
 };
 
 const ALL_LIMIT = 200;
+
+const HIT_INCLUDE = {
+  categories: { include: { category: true } },
+  photos: { take: 1, orderBy: { createdAt: "asc" as const } },
+};
 
 /**
  * Multi-strategy search:
@@ -77,7 +83,7 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
   if ((field === "any" || field === "license") && qLicNorm.length >= 4) {
     const rows = await prisma.dnrEntry.findMany({
       where: { ...baseFilter, licenseIdNorm: qLicNorm },
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       take: limit,
     });
     push(rows, "exact_license", () => 2000);
@@ -87,7 +93,7 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
   if ((field === "any" || field === "name") && qNameNorm.length >= 2) {
     const rows = await prisma.dnrEntry.findMany({
       where: { ...baseFilter, fullNameNorm: qNameNorm },
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       take: limit,
     });
     push(rows, "exact_name", () => 1500);
@@ -97,7 +103,7 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
   if ((field === "any" || field === "name") && qNameNorm.length >= 2) {
     const rows = await prisma.dnrEntry.findMany({
       where: { ...baseFilter, fullNameNorm: { startsWith: qNameNorm } },
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       take: limit,
     });
     push(rows, "prefix", (r) => scoreName(qNameNorm, r.fullNameNorm));
@@ -107,7 +113,7 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
   if ((field === "any" || field === "name") && qNameNorm.length >= 2) {
     const rows = await prisma.dnrEntry.findMany({
       where: { ...baseFilter, fullNameNorm: { contains: qNameNorm } },
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       take: limit * 2,
     });
     push(rows, "substring", (r) => scoreName(qNameNorm, r.fullNameNorm));
@@ -127,7 +133,7 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
           { primaryReason: { contains: ql } },
         ],
       },
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       take: limit,
     });
     push(rows, "alias", (r) => {
@@ -141,7 +147,7 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
     const initial = qNameNorm[0];
     const candidates = await prisma.dnrEntry.findMany({
       where: { ...baseFilter, fullNameNorm: { startsWith: initial } },
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       take: ALL_LIMIT,
     });
     const fuzzyHits = candidates
@@ -169,7 +175,7 @@ async function browse(opts: SearchOptions, limit: number, offset: number) {
   const [rows, total] = await Promise.all([
     prisma.dnrEntry.findMany({
       where,
-      include: { categories: { include: { category: true } } },
+      include: HIT_INCLUDE,
       orderBy: [{ severity: "desc" }, { fullName: "asc" }],
       take: limit,
       skip: offset,
@@ -192,6 +198,7 @@ function mapRow(r: any, matchKind: SearchHit["matchKind"], score: number): Searc
     severity: r.severity,
     status: r.status,
     damageAmount: r.damageAmount,
+    thumbnailUrl: r.photos?.[0]?.url ?? null,
     matchKind,
     score,
     categories: (r.categories || []).map((ec: any) => ec.category?.slug).filter(Boolean),

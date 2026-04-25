@@ -30,12 +30,14 @@ export async function GET(req: NextRequest) {
       id: h.id,
       fullName: h.fullName,
       licenseId: h.licenseId,
+      licenseState: h.licenseState,
       severity: h.severity,
       status: h.status,
       categories: h.categories,
       reason: h.primaryReason,
       matchKind: h.matchKind,
       score: h.score,
+      thumbnailUrl: h.thumbnailUrl,
     })),
   });
 }

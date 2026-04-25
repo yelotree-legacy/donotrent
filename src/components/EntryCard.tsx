@@ -2,44 +2,81 @@ import Link from "next/link";
 import type { SearchHit } from "@/lib/search";
 import { MatchPill, SeverityPill, StatusPill } from "./Pill";
 
-export function EntryCard({ hit, query }: { hit: SearchHit; query?: string }) {
+export type EntryCardData = SearchHit & { thumbnailUrl?: string | null };
+
+export function EntryCard({ hit, query }: { hit: EntryCardData; query?: string }) {
   return (
     <Link
       href={`/entry/${hit.id}`}
-      className="card group flex items-start gap-4 p-4 transition hover:border-accent/50 hover:bg-ink-800/40"
+      className="card-hover group flex items-stretch gap-0 overflow-hidden"
     >
-      <div className="grid size-14 shrink-0 place-items-center rounded bg-ink-800 text-xl font-bold text-neutral-300 ring-1 ring-ink-700 group-hover:ring-accent/40">
-        {initials(hit.fullName)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="truncate text-base font-semibold text-white">
-            {highlight(hit.fullName, query)}
-          </h3>
-          <SeverityPill severity={hit.severity} />
-          <StatusPill status={hit.status} />
-          <MatchPill kind={hit.matchKind} />
+      <Thumbnail url={hit.thumbnailUrl} fullName={hit.fullName} severity={hit.severity} />
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 p-4">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold text-white">
+              {highlight(hit.fullName, query)}
+            </h3>
+            <SeverityPill severity={hit.severity} />
+            <StatusPill status={hit.status} />
+          </div>
+          <p className="line-clamp-2 text-sm text-neutral-400">{hit.primaryReason}</p>
         </div>
-        <p className="mt-1 line-clamp-2 text-sm text-neutral-400">{hit.primaryReason}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
           {hit.licenseId ? (
             <span className="font-mono tag">
-              ID {hit.licenseState ? `${hit.licenseState}·` : ""}
-              {hit.licenseId}
+              {hit.licenseState ? `${hit.licenseState}·` : ""}{hit.licenseId}
             </span>
           ) : (
-            <span className="tag">License pending</span>
+            <span className="tag opacity-60">License pending</span>
           )}
           {hit.damageAmount != null && hit.damageAmount > 0 && (
             <span className="tag">${hit.damageAmount.toLocaleString()}</span>
           )}
-          {hit.categories.slice(0, 4).map((c) => (
+          {hit.categories.slice(0, 3).map((c) => (
             <span key={c} className="tag">{c}</span>
           ))}
-          {hit.categories.length > 4 && <span className="tag">+{hit.categories.length - 4}</span>}
+          {hit.categories.length > 3 && <span className="tag">+{hit.categories.length - 3}</span>}
+          <MatchPill kind={hit.matchKind} />
         </div>
       </div>
     </Link>
+  );
+}
+
+function Thumbnail({
+  url,
+  fullName,
+  severity,
+}: {
+  url?: string | null;
+  fullName: string;
+  severity: string;
+}) {
+  const ring =
+    severity === "CRITICAL" ? "ring-red-500/40"
+      : severity === "HIGH" ? "ring-orange-500/40"
+        : severity === "MEDIUM" ? "ring-amber-500/40"
+          : "ring-emerald-500/40";
+
+  if (url) {
+    return (
+      <div className={`relative shrink-0 overflow-hidden bg-ink-800 ring-1 ring-inset ${ring}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={`License of ${fullName}`}
+          className="h-full w-32 object-cover transition-transform duration-300 group-hover:scale-105 sm:w-40"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-ink-900/50" />
+      </div>
+    );
+  }
+  return (
+    <div className={`grid w-32 shrink-0 place-items-center bg-ink-800 ring-1 ring-inset ${ring} sm:w-40`}>
+      <span className="text-2xl font-bold text-neutral-300">{initials(fullName)}</span>
+    </div>
   );
 }
 
@@ -55,7 +92,7 @@ function highlight(text: string, q?: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded bg-yellow-500/30 px-0.5 text-yellow-200">{text.slice(idx, idx + q.length)}</mark>
+      <mark className="rounded bg-yellow-500/30 px-0.5 text-yellow-100">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </>
   );
