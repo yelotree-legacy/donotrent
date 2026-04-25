@@ -26,6 +26,9 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
     recentChecks,
     verdictBreakdown,
     last30Checks,
+    myBrokerReviews,
+    networkBrokerReviews,
+    myBrokerReviewCount,
   ] = await Promise.all([
     prisma.dnrEntry.count({ where: { createdById: me.id } }),
     prisma.dnrEntry.count(),
@@ -59,6 +62,22 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
       select: { createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.brokerReview.findMany({
+      where: { reviewerCompanyId: me.id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { broker: { select: { slug: true, name: true } } },
+    }),
+    prisma.brokerReview.findMany({
+      where: { reviewerCompanyId: { not: me.id } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: {
+        broker: { select: { slug: true, name: true } },
+        reviewerCompany: { select: { name: true, city: true, state: true } },
+      },
+    }),
+    prisma.brokerReview.count({ where: { reviewerCompanyId: me.id } }),
   ]);
 
   // 30-day sparkline of check counts
@@ -89,6 +108,13 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
       href: "/dashboard/upload",
       done: myEntriesCount > 0,
       hint: "Build your private network on top of the public registry",
+    },
+    {
+      key: "broker_review",
+      label: "Review a broker",
+      href: "/brokers",
+      done: myBrokerReviewCount > 0,
+      hint: "Rate the agents who source your customers",
     },
     {
       key: "api_key",
@@ -292,6 +318,91 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
             <HealthRow label="Database" ok={true} note="Connected" />
             <HealthRow label="Vercel Blob" ok={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} note="Photo uploads" />
           </ul>
+        </div>
+      </div>
+
+      {/* Broker activity */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="card overflow-hidden">
+          <header className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+              Your broker reviews
+              {myBrokerReviewCount > 0 && (
+                <span className="ml-2 text-xs text-neutral-500">· {myBrokerReviewCount}</span>
+              )}
+            </h2>
+            <Link href="/brokers" className="btn-link">All brokers →</Link>
+          </header>
+          {myBrokerReviews.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm text-neutral-400">You haven't reviewed any brokers yet.</p>
+              <p className="mt-1 text-xs text-neutral-500">
+                Rate the agents who source your customers — it helps you and the rest of the network avoid the bad ones.
+              </p>
+              <Link href="/brokers/new" className="btn-primary mt-3 inline-flex">+ Review a broker</Link>
+            </div>
+          ) : (
+            <ul className="divide-y divide-ink-800">
+              {myBrokerReviews.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/brokers/${r.broker.slug}`}
+                    className="block px-5 py-3 transition-colors hover:bg-ink-800/40"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate font-medium text-white">{r.broker.name}</span>
+                      <span className={`shrink-0 text-sm font-semibold ${
+                        r.rating >= 4 ? "text-emerald-300" : r.rating >= 3 ? "text-amber-300" : "text-red-300"
+                      }`}>
+                        {"★".repeat(r.rating)}<span className="text-neutral-700">{"★".repeat(5 - r.rating)}</span>
+                      </span>
+                    </div>
+                    <div className="truncate text-xs text-neutral-400">{r.title}</div>
+                    <div className="mt-0.5 text-[11px] text-neutral-500">{relTime(r.createdAt)}</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="card overflow-hidden">
+          <header className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
+              Latest network activity
+            </h2>
+            <Link href="/brokers" className="btn-link">Browse →</Link>
+          </header>
+          {networkBrokerReviews.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-neutral-400">
+              No network broker reviews yet. Be the first.
+            </div>
+          ) : (
+            <ul className="divide-y divide-ink-800">
+              {networkBrokerReviews.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/brokers/${r.broker.slug}`}
+                    className="block px-5 py-3 transition-colors hover:bg-ink-800/40"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate font-medium text-white">{r.broker.name}</span>
+                      <span className={`shrink-0 text-sm font-semibold ${
+                        r.rating >= 4 ? "text-emerald-300" : r.rating >= 3 ? "text-amber-300" : "text-red-300"
+                      }`}>
+                        ★ {r.rating}
+                      </span>
+                    </div>
+                    <div className="truncate text-xs text-neutral-300">{r.title}</div>
+                    <div className="mt-0.5 truncate text-[11px] text-neutral-500">
+                      {r.reviewerCompany.name}
+                      {r.reviewerCompany.city ? ` · ${r.reviewerCompany.city}` : ""} · {relTime(r.createdAt)}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
