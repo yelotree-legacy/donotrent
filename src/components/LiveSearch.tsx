@@ -3,16 +3,33 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Hit = {
+type RenterHit = {
+  type: "renter";
   id: string;
+  url: string;
   fullName: string;
   licenseId: string | null;
   licenseState: string | null;
-  reason: string;
   severity: string;
+  status: string;
+  primaryReason: string;
   matchKind: string;
   thumbnailUrl: string | null;
 };
+
+type BrokerHit = {
+  type: "broker";
+  id: string;
+  url: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  avgRating: number | null;
+  reviewCount: number;
+  description: string | null;
+};
+
+type AnyHit = RenterHit | BrokerHit;
 
 export function LiveSearch({
   initial = "",
@@ -27,18 +44,21 @@ export function LiveSearch({
   const router = useRouter();
   const [q, setQ] = useState(initial);
   const [field, setField] = useState(initialField);
-  const [hits, setHits] = useState<Hit[]>([]);
-  const [total, setTotal] = useState(0);
+  const [renters, setRenters] = useState<RenterHit[]>([]);
+  const [brokers, setBrokers] = useState<BrokerHit[]>([]);
+  const [renterTotal, setRenterTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounced fetch
+  const all: AnyHit[] = [...renters, ...brokers];
+
   useEffect(() => {
     if (!q.trim()) {
-      setHits([]); setTotal(0); setLoading(false); return;
+      setRenters([]); setBrokers([]); setRenterTotal(0); setLoading(false);
+      return;
     }
     setLoading(true);
     const t = setTimeout(async () => {
@@ -46,11 +66,13 @@ export function LiveSearch({
         const usp = new URLSearchParams();
         usp.set("q", q);
         usp.set("field", field);
-        usp.set("limit", "8");
-        const r = await fetch(`/api/search?${usp.toString()}`);
+        usp.set("entry_limit", "8");
+        usp.set("broker_limit", "5");
+        const r = await fetch(`/api/search/unified?${usp.toString()}`);
         const data = await r.json();
-        setHits(data.hits || []);
-        setTotal(data.total || 0);
+        setRenters(data.entries?.hits || []);
+        setBrokers(data.brokers?.hits || []);
+        setRenterTotal(data.entries?.total || 0);
       } finally {
         setLoading(false);
       }
@@ -58,7 +80,6 @@ export function LiveSearch({
     return () => clearTimeout(t);
   }, [q, field]);
 
-  // Click-away
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
@@ -86,13 +107,13 @@ export function LiveSearch({
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") { e.preventDefault(); setHighlighted((h) => Math.min(h + 1, hits.length - 1)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); setHighlighted((h) => Math.min(h + 1, all.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHighlighted((h) => Math.max(h - 1, 0)); }
     else if (e.key === "Enter") {
       e.preventDefault();
-      const target = hits[highlighted];
+      const target = all[highlighted];
       if (target) {
-        router.push(`/entry/${target.id}`);
+        router.push(target.url);
         setOpen(false);
       } else {
         submitFull();
@@ -126,7 +147,7 @@ export function LiveSearch({
         <input
           ref={inputRef}
           className={inputCls}
-          placeholder="Search by full name or license ID — try Tyler, Brown, F5362380…"
+          placeholder="Renters or brokers — search by name, license ID, IG handle, F5362380…"
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpen(true); setHighlighted(0); }}
           onFocus={() => setOpen(Boolean(q))}
@@ -155,56 +176,111 @@ export function LiveSearch({
               Searching…
             </div>
           )}
-          {!loading && hits.length === 0 && (
+          {!loading && all.length === 0 && (
             <div className="px-4 py-6 text-center text-sm text-neutral-500">
               No matches for <span className="text-neutral-300">"{q}"</span>.
             </div>
           )}
-          {!loading && hits.length > 0 && (
-            <>
-              <ul className="max-h-[60vh] overflow-y-auto py-1">
-                {hits.map((h, i) => (
-                  <li key={h.id}>
-                    <Link
-                      href={`/entry/${h.id}`}
-                      onClick={() => setOpen(false)}
-                      onMouseEnter={() => setHighlighted(i)}
-                      className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${i === highlighted ? "bg-ink-800/80" : ""}`}
-                    >
-                      <div className="size-11 shrink-0 overflow-hidden rounded-md bg-ink-800 ring-1 ring-ink-700">
-                        {h.thumbnailUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={h.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-xs font-semibold text-neutral-400">
-                            {(h.fullName.split(" ")[0]?.[0] || "") + (h.fullName.split(" ").slice(-1)[0]?.[0] || "")}
+          {!loading && all.length > 0 && (
+            <div className="max-h-[60vh] overflow-y-auto py-1">
+              {renters.length > 0 && (
+                <>
+                  <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+                    Flagged renters · {renterTotal}
+                  </div>
+                  <ul>
+                    {renters.map((h, i) => (
+                      <li key={`r-${h.id}`}>
+                        <Link
+                          href={h.url}
+                          onClick={() => setOpen(false)}
+                          onMouseEnter={() => setHighlighted(i)}
+                          className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${i === highlighted ? "bg-ink-800/80" : ""}`}
+                        >
+                          <div className="size-11 shrink-0 overflow-hidden rounded-md bg-ink-800 ring-1 ring-ink-700">
+                            {h.thumbnailUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={h.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-xs font-semibold text-neutral-400">
+                                {(h.fullName.split(" ")[0]?.[0] || "") + (h.fullName.split(" ").slice(-1)[0]?.[0] || "")}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-white">{h.fullName}</div>
-                        <div className="truncate text-xs text-neutral-500">{h.reason}</div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1.5 text-[10px]">
-                        {h.licenseId && (
-                          <span className="font-mono tag">
-                            {h.licenseState ? `${h.licenseState}·` : ""}{h.licenseId}
-                          </span>
-                        )}
-                        <SeverityDot s={h.severity} />
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm font-medium text-white">{h.fullName}</span>
+                              <span className="pill bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30">Renter</span>
+                            </div>
+                            <div className="truncate text-xs text-neutral-500">{h.primaryReason}</div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5 text-[10px]">
+                            {h.licenseId && (
+                              <span className="font-mono tag">
+                                {h.licenseState ? `${h.licenseState}·` : ""}{h.licenseId}
+                              </span>
+                            )}
+                            <SeverityDot s={h.severity} />
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {brokers.length > 0 && (
+                <>
+                  <div className="border-t border-ink-800 px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+                    Brokers · {brokers.length}
+                  </div>
+                  <ul>
+                    {brokers.map((b, i) => {
+                      const idx = renters.length + i;
+                      return (
+                        <li key={`b-${b.id}`}>
+                          <Link
+                            href={b.url}
+                            onClick={() => setOpen(false)}
+                            onMouseEnter={() => setHighlighted(idx)}
+                            className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${idx === highlighted ? "bg-ink-800/80" : ""}`}
+                          >
+                            <div className="grid size-11 shrink-0 place-items-center rounded-md bg-blue-500/10 ring-1 ring-blue-500/30 text-blue-300">
+                              <BrokerIcon />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate text-sm font-medium text-white">{b.name}</span>
+                                <span className="pill bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30">Broker</span>
+                              </div>
+                              <div className="truncate text-xs text-neutral-500">
+                                {[b.city, b.state].filter(Boolean).join(", ") || (b.description ? b.description.slice(0, 60) : "—")}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2 text-[10px]">
+                              {b.reviewCount > 0 ? (
+                                <span className={`font-semibold ${b.avgRating! >= 4 ? "text-emerald-300" : b.avgRating! >= 3 ? "text-amber-300" : "text-red-300"}`}>
+                                  ★ {b.avgRating!.toFixed(1)}
+                                </span>
+                              ) : <span className="text-neutral-500">—</span>}
+                              <span className="text-neutral-500">{b.reviewCount}</span>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
+
               <button
                 onClick={submitFull}
                 className="flex w-full items-center justify-between border-t border-ink-800 px-4 py-2.5 text-xs text-neutral-400 transition-colors hover:bg-ink-800 hover:text-white"
               >
-                <span>See all {total.toLocaleString()} result{total === 1 ? "" : "s"}</span>
+                <span>See all renter results</span>
                 <span>↵</span>
               </button>
-            </>
+            </div>
           )}
         </div>
       )}
@@ -217,6 +293,15 @@ function SearchIcon() {
     <svg className="size-4 shrink-0 text-neutral-500" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="9" cy="9" r="6" />
       <path d="m17 17-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BrokerIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="10" cy="6" r="3" />
+      <path d="M3 17c0-3.5 3-6 7-6s7 2.5 7 6" strokeLinecap="round" />
     </svg>
   );
 }

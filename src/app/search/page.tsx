@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { searchEntries } from "@/lib/search";
+import { searchBrokers } from "@/lib/brokers";
 import { LiveSearch } from "@/components/LiveSearch";
 import { Filters } from "@/components/Filters";
 import { EntryCard } from "@/components/EntryCard";
@@ -34,7 +35,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const severity = asArray(searchParams.severity);
   const status = asArray(searchParams.status);
 
-  const [{ hits, total }, categories, totalCount, withLicenseCount, criticalCount] = await Promise.all([
+  const [{ hits, total }, categories, totalCount, withLicenseCount, criticalCount, brokerHits] = await Promise.all([
     searchEntries({ query: q, field, categories: cats, severity, status, limit: 50 }),
     prisma.category.findMany({
       orderBy: { label: "asc" },
@@ -43,6 +44,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
     prisma.dnrEntry.count(),
     prisma.dnrEntry.count({ where: { licenseId: { not: null } } }),
     prisma.dnrEntry.count({ where: { severity: "CRITICAL" } }),
+    q ? searchBrokers(q, 6) : Promise.resolve([]),
   ]);
 
   if (q) await logSearch(q, field, hits.length);
@@ -92,6 +94,43 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
           ) : (
             <div className="grid gap-3 stagger">
               {hits.map((h) => <EntryCard key={h.id} hit={h} query={q} />)}
+            </div>
+          )}
+
+          {q && brokerHits.length > 0 && (
+            <div className="mt-8 fade-in">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h3 className="text-base font-semibold text-white">
+                  Also matching in <Link href="/brokers" className="text-blue-300 hover:underline">brokers</Link>
+                </h3>
+                <span className="text-xs text-neutral-500">{brokerHits.length} broker{brokerHits.length === 1 ? "" : "s"}</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {brokerHits.map((b) => (
+                  <Link key={b.id} href={`/brokers/${b.slug}`} className="card-hover block p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium text-white">{b.name}</span>
+                          <span className="pill bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30">Broker</span>
+                        </div>
+                        {(b.city || b.state) && (
+                          <div className="mt-0.5 text-[11px] text-neutral-500">{[b.city, b.state].filter(Boolean).join(", ")}</div>
+                        )}
+                        {b.description && <p className="mt-2 line-clamp-2 text-xs text-neutral-400">{b.description}</p>}
+                      </div>
+                      {b.reviewCount > 0 ? (
+                        <div className="shrink-0 text-right">
+                          <div className={`text-sm font-semibold ${b.avgRating! >= 4 ? "text-emerald-300" : b.avgRating! >= 3 ? "text-amber-300" : "text-red-300"}`}>
+                            ★ {b.avgRating!.toFixed(1)}
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{b.reviewCount} review{b.reviewCount === 1 ? "" : "s"}</div>
+                        </div>
+                      ) : <span className="tag opacity-60">No reviews</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>

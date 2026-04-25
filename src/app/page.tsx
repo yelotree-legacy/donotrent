@@ -66,16 +66,40 @@ export default async function MarketingHome() {
       {/* FEATURES */}
       <section>
         <header className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold text-white">Built for exotic + luxury rental operators</h2>
-          <p className="mt-2 text-neutral-400">Everything you need to vet a renter, in one tool.</p>
+          <h2 className="text-3xl font-bold text-white">Two registries. One subscription.</h2>
+          <p className="mt-2 text-neutral-400">Vet the renter AND the broker who brought them.</p>
         </header>
         <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Feature title="Multi-source DNR cross-check" body="Aggregate across partner operators, your own uploads, and the public registry. Cross-source corroboration auto-escalates the verdict." />
           <Feature title="OFAC sanctions screening" body="Free US Treasury SDN list match runs on every check. Federal-grade watchlist, automatic." />
-          <Feature title="Optional ID verification" body="Stripe Identity at $1.50/check confirms the license is real and the renter standing there matches it." />
+          <Feature title="Broker Registry" body="Rate and review the agents and middlemen who source your customers. Spot the brokers who keep bringing problem renters before you take their next call." />
           <Feature title="Risk score 0–100" body="Severity × source-trust × hit count, weighted for multi-source corroboration. Tune your own thresholds." />
           <Feature title="API access" body="POST /api/v1/check from your booking system. Auto-block at booking time." />
           <Feature title="Bring your own list" body="Upload your existing DNR list as a private source via CSV. Cross-checks gain your data instantly." />
+        </div>
+      </section>
+
+      {/* BROKER REGISTRY CALLOUT */}
+      <section className="card overflow-hidden">
+        <div className="grid items-center gap-6 p-8 md:grid-cols-[1.4fr_1fr] md:gap-10 md:p-12">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-blue-300">
+              Broker Registry
+            </div>
+            <h2 className="mt-3 text-3xl font-bold text-white">Some brokers bring you problems wholesale.</h2>
+            <p className="mt-3 text-neutral-300">
+              Every problem renter has a story — and often, a person who introduced you. The Broker Registry lets operators rate the agents who source their customers. Search by name, email, or Instagram handle. See the rating before you take their next call.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Link href="/brokers" className="btn-primary">Browse brokers</Link>
+              <Link href="/brokers/new" className="btn-ghost">+ Add a broker</Link>
+            </div>
+          </div>
+          <div className="grid gap-3">
+            <ExampleBroker name="Sample Brokerage Inc." rating={2.1} reviews={12} note="Multiple unpaid damages; nonresponsive after rentals" tone="red" />
+            <ExampleBroker name="Trusted Agent LLC" rating={4.7} reviews={8} note="Consistent vetting; reliable communication" tone="green" />
+            <ExampleBroker name="New Broker Co." rating={null} reviews={0} note="No reviews yet" tone="neutral" />
+          </div>
         </div>
       </section>
 
@@ -110,7 +134,8 @@ export default async function MarketingHome() {
           <h2 className="text-3xl font-bold text-white">Common questions</h2>
         </header>
         <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
-          {free && <FAQ q="Is it really free?" a="Yes — for verified rental operators. Cross-source DNR + OFAC + the API are unlimited. Optional add-ons like Stripe Identity ($1.50) and Checkr criminal background ($5–15) are passthrough at vendor cost." />}
+          {free && <FAQ q="Is it really free?" a="Yes — for verified rental operators. Cross-source DNR + OFAC + Broker Registry + the API are unlimited and free. Future add-ons may carry passthrough vendor costs but the core platform stays free." />}
+          <FAQ q="What's the Broker Registry?" a="A separate registry for the agents and middlemen who source rental customers. Operators rate brokers on the quality of customers they bring, payment reliability, and communication. Search by name, email, or Instagram handle." />
           <FAQ q="How fast is a Rent Report?" a="Cross-source check runs in under a second. Stripe Identity adds a 30–60 second flow on the renter's phone. The verdict updates live as the renter completes." />
           <FAQ q="Does the public see who's flagged?" a="No. The registry is gated behind operator authentication. Public visitors see only this marketing site, signup, and the dispute form." />
           <FAQ q="What if a renter disputes their listing?" a="Anyone listed can file a dispute. The entry's status flips to DISPUTED until the listing operator responds. Disputed entries carry lower trust weight in the verdict." />
@@ -165,6 +190,23 @@ function Feature({ title, body }: { title: string; body: string }) {
     <div className="card p-5">
       <h3 className="text-base font-semibold text-white">{title}</h3>
       <p className="mt-2 text-sm text-neutral-400">{body}</p>
+    </div>
+  );
+}
+function ExampleBroker({ name, rating, reviews, note, tone }: { name: string; rating: number | null; reviews: number; note: string; tone: "red" | "green" | "neutral" }) {
+  const ratingCls = tone === "red" ? "text-red-300" : tone === "green" ? "text-emerald-300" : "text-neutral-500";
+  return (
+    <div className="rounded-lg border border-ink-700 bg-ink-950/40 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-medium text-white">{name}</span>
+        {rating != null ? (
+          <span className={`text-sm font-semibold ${ratingCls}`}>★ {rating.toFixed(1)}</span>
+        ) : (
+          <span className="text-xs text-neutral-500">No reviews</span>
+        )}
+      </div>
+      <div className="mt-1 text-xs text-neutral-400">{note}</div>
+      {reviews > 0 && <div className="mt-1 text-[10px] text-neutral-500">{reviews} reviews</div>}
     </div>
   );
 }
