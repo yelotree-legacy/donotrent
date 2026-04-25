@@ -2,8 +2,10 @@
 
 A multi-tenant **Do Not Rent** registry for vehicle rental companies. Verified operators upload customer licenses + reasons; any company (or the public) can search by full name or license ID with exact, prefix, substring, alias, and fuzzy (Levenshtein) matching.
 
-Seed data: **240 entries** imported from
-[`supremesportrental.com/pages/do-not-rent-list`](https://supremesportrental.com/pages/do-not-rent-list).
+Seed data: **263 entries** imported from
+[`supremesportrental.com/pages/do-not-rent-list`](https://supremesportrental.com/pages/do-not-rent-list)
+including **263 license images**, **110 OCR-extracted license numbers**,
+**91 license states**, **81 dates of birth**, **59 expiration dates**.
 
 ## Stack
 
@@ -65,9 +67,34 @@ Filters: severity, status, category, license state. Composable via URL.
 npm install
 cp .env.example .env
 npm run db:push
-npm run db:seed   # imports 240 entries from the seed list
+
+# Choose ONE seed path:
+npm run db:seed         # 240 entries — names + reasons only (fast, no images)
+npm run db:seed:full    # 263 entries with OCR-extracted license IDs (uses scripts/out/extracted.json)
+
 npm run dev
 ```
+
+### Re-running the OCR pipeline
+
+`scripts/out/extracted.json` is committed so `db:seed:full` works without
+re-running OCR. To regenerate it from scratch (you'll need internet, ~3 min on a CPU):
+
+```bash
+# Save the source page HTML to .scrape-page.html, then:
+npm run ocr:download   # downloads ~263 license images to public/uploads/imported/
+npm run ocr:run        # tesseract.js OCR with sharp preprocessing
+npm run ocr:extract    # heuristic field extraction (license #, state, DOB, expiry)
+npm run db:seed:full   # apply to DB
+```
+
+### License-number extraction notes
+
+`scripts/03-extract.ts` uses state-specific regex patterns for the major
+states (FL, CA, GA, TX, NY, IL, NJ, MI, OH, PA, MA, …) plus a generic fallback
+that requires ≥4 digits and rejects all-letter tokens. Tesseract's default
+output is noisy on driver licenses; for production swap in **AWS Textract
+AnalyzeID** or **Google Document AI ID Parser** at `scripts/02-ocr.ts`.
 
 Then sign in with one of the seeded accounts:
 

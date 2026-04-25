@@ -1,6 +1,6 @@
 node_modules
 .next
-out
+/out
 .env*
 !.env.example
 prisma/dev.db
@@ -9,3 +9,8 @@ public/uploads/*
 !public/uploads/.gitkeep
 .DS_Store
 .claude
+.scrape-page.html
+scripts/out/ocr/
+scripts/out/extracted-with-ocr.json
+*.traineddata
+*.traineddata.gz
