@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { CATEGORIES, SEED_ENTRIES } from "./seed-data";
-import { normalizeName, normalizeLicense, splitName } from "../src/lib/normalize";
+import { normalizeName, splitName } from "../src/lib/normalize";
 
 const prisma = new PrismaClient();
 
@@ -15,54 +14,12 @@ async function main() {
     });
   }
 
-  console.log("→ seeding seed company (Supreme Sport Rental import)…");
-  const passwordHash = await bcrypt.hash("admin1234", 10);
-  const seedCo = await prisma.company.upsert({
-    where: { email: "import@supremesportrental.com" },
-    update: {},
-    create: {
-      name: "Supreme Sport Rental",
-      slug: "supreme-sport-rental",
-      email: "import@supremesportrental.com",
-      phone: "728-777-3103",
-      city: "Miami",
-      state: "FL",
-      passwordHash,
-      verified: true,
-      isAdmin: false,
-    },
-  });
-
-  console.log("→ seeding demo company (Acme Exotics)…");
-  await prisma.company.upsert({
-    where: { email: "demo@acmeexotics.test" },
-    update: {},
-    create: {
-      name: "Acme Exotics",
-      slug: "acme-exotics",
-      email: "demo@acmeexotics.test",
-      phone: "555-0100",
-      city: "Los Angeles",
-      state: "CA",
-      passwordHash,
-      verified: true,
-    },
-  });
-
-  console.log("→ seeding admin account (admin@dnr.local)…");
-  await prisma.company.upsert({
-    where: { email: "admin@dnr.local" },
-    update: { isAdmin: true, plan: "enterprise" },
-    create: {
-      name: "DNR Registry Admin",
-      slug: "dnr-admin",
-      email: "admin@dnr.local",
-      passwordHash,
-      verified: true,
-      isAdmin: true,
-      plan: "enterprise",
-    },
-  });
+  // Note: demo accounts are intentionally not seeded. Create your own admin
+  // account directly in the DB after running this seed (see scripts/01-create-admin.ts
+  // or insert via Prisma Studio).
+  // The 264 imported entries below have createdById = null and are credited to
+  // the Source ('Supreme Sport Rental') instead of a Company row.
+  const seedCo = { id: null as string | null }; // sentinel — entries get sourceId for attribution
 
   console.log(`→ seeding ${SEED_ENTRIES.length} DNR entries…`);
   const allCategories = await prisma.category.findMany();

@@ -19,7 +19,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { CATEGORIES, SEED_ENTRIES } from "../prisma/seed-data";
 import { normalizeLicense, normalizeName, splitName } from "../src/lib/normalize";
 
@@ -110,40 +109,11 @@ const data: Extracted[] = JSON.parse(readFileSync(extractedPath, "utf8"));
     },
   });
 
-  console.log("→ ensuring companies…");
-  const passwordHash = await bcrypt.hash("admin1234", 10);
-  const seedCo = await prisma.company.upsert({
-    where: { email: "import@supremesportrental.com" },
-    update: {},
-    create: {
-      name: "Supreme Sport Rental",
-      slug: "supreme-sport-rental",
-      email: "import@supremesportrental.com",
-      phone: "728-777-3103",
-      city: "Miami",
-      state: "FL",
-      passwordHash, verified: true,
-    },
-  });
-  await prisma.company.upsert({
-    where: { email: "demo@acmeexotics.test" },
-    update: {},
-    create: {
-      name: "Acme Exotics", slug: "acme-exotics",
-      email: "demo@acmeexotics.test", phone: "555-0100",
-      city: "Los Angeles", state: "CA",
-      passwordHash, verified: true,
-    },
-  });
-  await prisma.company.upsert({
-    where: { email: "admin@dnr.local" },
-    update: { isAdmin: true },
-    create: {
-      name: "DNR Registry Admin", slug: "dnr-admin",
-      email: "admin@dnr.local",
-      passwordHash, verified: true, isAdmin: true,
-    },
-  });
+  // Note: demo accounts are intentionally NOT seeded. Imported entries are
+  // attributed to the Source ('Supreme Sport Rental') above; createdById
+  // stays null. Create your own admin account in the DB after seeding —
+  // the legacy demo accounts (admin@dnr.local, etc.) are gone.
+  const seedCo = { id: null as string | null };
 
   // Build a quick lookup table from the curated SEED_ENTRIES (the categorization layer).
   const curatedByNorm = new Map(

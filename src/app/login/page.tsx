@@ -47,14 +47,6 @@ export default function LoginPage({ searchParams }: { searchParams: { err?: stri
           </div>
           <button type="submit" className="btn-primary w-full">Sign in</button>
         </form>
-        <div className="mt-5 rounded border border-ink-700 bg-ink-800/40 p-3 text-xs text-neutral-400">
-          <strong className="text-neutral-300">Demo accounts</strong>
-          <div className="mt-1 font-mono leading-relaxed">
-            admin@dnr.local / admin1234<br />
-            demo@acmeexotics.test / admin1234<br />
-            import@supremesportrental.com / admin1234
-          </div>
-        </div>
       </div>
     </div>
   );
