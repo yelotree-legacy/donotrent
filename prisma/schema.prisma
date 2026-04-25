@@ -249,6 +249,23 @@ model CheckSession {
   idvErrorCode          String?
   idvCompletedAt        DateTime?
 
+  // OFAC sanctions match (free, public US Treasury data)
+  // status: not_run | clear | match | error
+  ofacStatus      String     @default("not_run")
+  ofacMatchCount  Int        @default(0)
+  ofacMatchesJson String?    // JSON: [{uid, name, programs, score}]
+  ofacCheckedAt   DateTime?
+
+  // Checkr criminal + sex offender (paid via CHECKR_API_KEY)
+  // status: not_run | pending | clear | consider | suspended | error
+  checkrStatus      String   @default("not_run")
+  checkrCandidateId String?
+  checkrReportId    String?  @unique
+  checkrAdjudication String? // engaged | post_adverse_action | pre_adverse_action | none
+  checkrFindingsJson String? // JSON: [{type, severity, summary}]
+  checkrErrorCode   String?
+  checkrCompletedAt DateTime?
+
   companyId       String?
   company         Company?   @relation("CompanyChecks", fields: [companyId], references: [id], onDelete: SetNull)
 
@@ -258,6 +275,7 @@ model CheckSession {
   @@index([companyId])
   @@index([createdAt])
   @@index([idvSessionId])
+  @@index([checkrReportId])
 }
 
 // Tamper-evident log of mutations for trust.

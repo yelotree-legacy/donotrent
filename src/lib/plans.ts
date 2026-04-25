@@ -1,7 +1,10 @@
 // Plan definitions. Server-side authoritative. Stripe Price IDs come from
 // env vars so the same code works against test- and live-mode Stripe.
 
-export type PlanSlug = "free" | "starter" | "pro" | "business" | "enterprise";
+export type PlanSlug = "free" | "starter" | "pro" | "pro_plus" | "enterprise";
+
+// Slugs shown on the public pricing page (in order).
+export const PUBLIC_PLAN_SLUGS: PlanSlug[] = ["starter", "pro", "pro_plus"];
 
 export type Plan = {
   slug: PlanSlug;
@@ -77,9 +80,9 @@ export const PLANS: Record<PlanSlug, Plan> = {
     cta: "Choose plan",
     highlight: true,
   },
-  business: {
-    slug: "business",
-    label: "Business",
+  pro_plus: {
+    slug: "pro_plus",
+    label: "Pro+",
     monthlyPrice: 399,
     monthlyChecks: 500,
     apiAccess: true,
@@ -90,11 +93,12 @@ export const PLANS: Record<PlanSlug, Plan> = {
       "500 Rent Reports / month",
       "API access with higher rate limits",
       "10 team seats",
-      "Stripe Identity included",
+      "Stripe Identity + Checkr included",
+      "OFAC + sex offender screening",
       "Search alerts + Slack/email webhooks",
       "Priority support",
     ],
-    stripePriceEnvVar: "STRIPE_PRICE_BUSINESS",
+    stripePriceEnvVar: "STRIPE_PRICE_PRO_PLUS",
     cta: "Choose plan",
   },
   enterprise: {
@@ -143,5 +147,10 @@ export function checksRemaining(company: {
 
 export function priceIdForPlan(plan: Plan): string | undefined {
   if (!plan.stripePriceEnvVar) return undefined;
+  // Backwards-compat: if old STRIPE_PRICE_BUSINESS is still set, accept it
+  // for the renamed Pro+ slug.
+  if (plan.slug === "pro_plus") {
+    return process.env.STRIPE_PRICE_PRO_PLUS || process.env.STRIPE_PRICE_BUSINESS;
+  }
   return process.env[plan.stripePriceEnvVar];
 }

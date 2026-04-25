@@ -5,9 +5,12 @@ import { crossCheck } from "@/lib/cross-check";
 import { isStripeConfigured } from "@/lib/stripe";
 import { looksLikeMatch } from "@/lib/idv";
 import { requireCompany } from "@/lib/auth";
+import { isCheckrConfigured } from "@/lib/checks/checkr";
 import { IdvLauncher } from "./IdvLauncher";
 import { IdvStatusPoller } from "./IdvStatusPoller";
 import { CopyButton } from "./CopyButton";
+import { CheckrLauncher } from "./CheckrLauncher";
+import { CheckrStatusPoller } from "./CheckrStatusPoller";
 
 export default async function CheckSessionPage({
   params,
@@ -51,14 +54,167 @@ export default async function CheckSessionPage({
         <SourceBreakdown sources={xc.sources} className="md:col-span-2" />
       </div>
 
+      <div className="grid gap-6 md:grid-cols-2">
+        <OfacCard session={session} />
+        <CheckrCard session={session} checkrOn={isCheckrConfigured()} />
+      </div>
+
       {xc.hits.length > 0 && <Evidence hits={xc.hits} />}
 
       {/* Polls until IDV is verified or the user cancels. */}
       {session.idvSessionId && session.idvStatus !== "verified" && (
         <IdvStatusPoller checkId={session.id} />
       )}
+      {session.checkrReportId && session.checkrStatus === "pending" && (
+        <CheckrStatusPoller checkId={session.id} />
+      )}
     </div>
   );
+}
+
+function OfacCard({ session }: { session: any }) {
+  const status = session.ofacStatus as string;
+  const matches = session.ofacMatchesJson ? (JSON.parse(session.ofacMatchesJson) as any[]) : [];
+  return (
+    <div className="card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Sanctions watchlist</h2>
+        <StatusPillGeneric status={status} variants={{
+          clear: ["emerald", "Clear"],
+          match: ["red", "MATCH"],
+          error: ["amber", "Error"],
+          not_run: ["neutral", "Not run"],
+        }} />
+      </div>
+      {status === "clear" && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-emerald-300">
+          <CheckCircle /> No match against the OFAC SDN list
+        </div>
+      )}
+      {status === "match" && (
+        <div className="mt-3 space-y-3">
+          <p className="rounded border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+            <strong>OFAC sanctions match found.</strong> This person appears on the US Treasury Specially Designated Nationals list. Renting to them may violate federal law.
+          </p>
+          <ul className="space-y-2 text-xs">
+            {matches.slice(0, 3).map((m: any) => (
+              <li key={m.uid} className="rounded border border-ink-700 bg-ink-800/40 p-2">
+                <div className="text-sm font-medium text-white">{m.name}</div>
+                <div className="text-[11px] text-neutral-400">
+                  Programs: {m.programs?.join(", ") || "—"} · Confidence {Math.round(m.score / 10)}%
+                </div>
+                {m.remarks && <div className="mt-1 text-[11px] text-neutral-500 line-clamp-2">{m.remarks}</div>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {status === "error" && (
+        <p className="mt-3 text-xs text-amber-300">
+          OFAC list could not be fetched. Will retry on next check. (US Treasury occasionally serves stale data.)
+        </p>
+      )}
+      {status === "not_run" && (
+        <p className="mt-3 text-xs text-neutral-500">No name provided to screen against OFAC.</p>
+      )}
+      <p className="mt-4 text-[10px] text-neutral-500">
+        Source: US Treasury OFAC SDN list · public, free, ~daily updates
+      </p>
+    </div>
+  );
+}
+
+function CheckrCard({ session, checkrOn }: { session: any; checkrOn: boolean }) {
+  const status = session.checkrStatus as string;
+  const findings = session.checkrFindingsJson ? (JSON.parse(session.checkrFindingsJson) as any[]) : [];
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Criminal + Sex Offender</h2>
+        <StatusPillGeneric status={status} variants={{
+          not_run: ["neutral", "Not started"],
+          pending: ["blue", "Running…"],
+          clear: ["emerald", "Clear"],
+          consider: ["amber", "Review"],
+          suspended: ["red", "Suspended"],
+          error: ["red", "Error"],
+        }} />
+      </div>
+
+      {!checkrOn && (
+        <div className="mt-3 rounded border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
+          Checkr isn't configured for this environment. Set <code className="rounded bg-amber-500/10 px-1 font-mono">CHECKR_API_KEY</code> in Vercel to enable. ~$5–15/check.
+        </div>
+      )}
+
+      {status === "not_run" && checkrOn && (
+        <>
+          <p className="mt-3 text-xs text-neutral-400">
+            Triggers a Checkr report — National Sex Offender Registry, national criminal database, and SSN trace. Returns clear / review / suspended.
+          </p>
+          <CheckrLauncher checkId={session.id} className="mt-3 w-full justify-center" />
+          <p className="mt-2 text-[10px] text-neutral-500">~$5–15 · 1 hour to 5 days · powered by Checkr</p>
+        </>
+      )}
+
+      {status === "pending" && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-blue-300">
+            <span className="size-2 animate-pulse rounded-full bg-blue-400" />
+            Background report in progress…
+          </div>
+          <p className="text-[11px] text-neutral-500">
+            Most reports complete in 1 hour. Some county records take 1–5 days. The verdict will update automatically.
+          </p>
+        </div>
+      )}
+
+      {status === "clear" && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-emerald-300">
+          <CheckCircle /> No criminal records · no sex offender match · SSN trace clean
+        </div>
+      )}
+
+      {(status === "consider" || status === "suspended") && (
+        <div className="mt-3 space-y-3">
+          <ul className="space-y-2 text-xs">
+            {findings.map((f: any, i: number) => (
+              <li key={i} className={`rounded border p-2 ${
+                f.severity === "critical" ? "border-red-500/30 bg-red-500/10 text-red-200"
+                  : f.severity === "warning" ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                    : "border-ink-700 bg-ink-800/40 text-neutral-300"
+              }`}>
+                <div className="text-[10px] uppercase tracking-wider opacity-70">{f.type.replace(/_/g, " ")}</div>
+                <div className="mt-0.5 text-sm font-medium">{f.summary}</div>
+              </li>
+            ))}
+          </ul>
+          {session.checkrAdjudication && (
+            <div className="text-[11px] text-neutral-500">Adjudication: {session.checkrAdjudication}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusPillGeneric({
+  status,
+  variants,
+}: {
+  status: string;
+  variants: Record<string, [string, string]>;
+}) {
+  const [color, label] = variants[status] || ["neutral", status];
+  const cls: Record<string, string> = {
+    neutral: "bg-neutral-500/15 text-neutral-300 ring-neutral-500/30",
+    emerald: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
+    amber: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
+    red: "bg-red-500/15 text-red-300 ring-red-500/30",
+    blue: "bg-blue-500/15 text-blue-300 ring-blue-500/30",
+  };
+  return <span className={`pill ring-1 ring-inset ${cls[color] || cls.neutral}`}>{label}</span>;
 }
 
 function Verdict({ result, session }: { result: any; session: any }) {

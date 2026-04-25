@@ -74,12 +74,12 @@ Sells the Starter / Pro / Business plans.
 1. **Stripe dashboard** → **Products** → **Add product** — repeat for each:
    - "DNR Starter" with a $49/month recurring price
    - "DNR Pro" with a $149/month recurring price
-   - "DNR Business" with a $399/month recurring price
+   - "DNR Pro+" with a $399/month recurring price
 2. After creating each, click into it and copy its **Price ID** (looks like `price_1Xxxx…`)
 3. In Vercel **Settings → Environment Variables**, add:
    - `STRIPE_PRICE_STARTER` = `price_…`
    - `STRIPE_PRICE_PRO` = `price_…`
-   - `STRIPE_PRICE_BUSINESS` = `price_…`
+   - `STRIPE_PRICE_PRO_PLUS` = `price_…`  *(if you previously set `STRIPE_PRICE_BUSINESS`, that still works as a fallback)*
 4. **Stripe → Developers → Webhooks** → either reuse the same endpoint as
    IDV (`/api/idv/webhook`) and **subscribe additional events**, or create a
    new endpoint pointing to `/api/billing/webhook`. The events to subscribe:

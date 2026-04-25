@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PLANS } from "@/lib/plans";
+import { PLANS, PUBLIC_PLAN_SLUGS } from "@/lib/plans";
 import { requireCompany } from "@/lib/auth";
 import { ChoosePlanButton } from "./ChoosePlanButton";
 
@@ -25,8 +25,8 @@ export default async function PricingPage({ searchParams }: { searchParams: { ch
         </p>
       </header>
 
-      <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        {(["starter", "pro", "business", "enterprise"] as const).map((slug) => {
+      <section className="grid gap-5 md:grid-cols-3">
+        {PUBLIC_PLAN_SLUGS.map((slug) => {
           const plan = PLANS[slug];
           const highlight = plan.highlight;
           return (
@@ -62,9 +62,7 @@ export default async function PricingPage({ searchParams }: { searchParams: { ch
               </ul>
 
               <div className="mt-6">
-                {plan.slug === "enterprise" ? (
-                  <a href="mailto:sales@dnr.local" className="btn-ghost w-full justify-center">Contact sales</a>
-                ) : me ? (
+                {me ? (
                   <ChoosePlanButton plan={plan.slug} highlight={highlight} />
                 ) : (
                   <Link
@@ -78,6 +76,14 @@ export default async function PricingPage({ searchParams }: { searchParams: { ch
             </div>
           );
         })}
+      </section>
+
+      <section className="rounded-xl border border-ink-700 bg-ink-900/40 p-6 text-center">
+        <h3 className="text-lg font-semibold text-white">Need more than 500 checks/month or a custom contract?</h3>
+        <p className="mt-2 text-sm text-neutral-400">
+          Enterprise tier with unlimited checks, white-label, dedicated account manager, and SLA.
+        </p>
+        <a href="mailto:sales@dnr.local" className="btn-ghost mt-4 inline-flex">Contact sales</a>
       </section>
 
       <section className="card p-8">

@@ -6,6 +6,7 @@ import { crossCheck } from "@/lib/cross-check";
 import { logSearch } from "@/lib/audit";
 import { requireCompany } from "@/lib/auth";
 import { canConsumeCheck, incrementCheck } from "@/lib/usage";
+import { checkOfac } from "@/lib/checks/ofac";
 import { CheckForm } from "./CheckForm";
 
 type SP = { license?: string; name?: string; dob?: string };
@@ -32,17 +33,44 @@ async function runCheck(formData: FormData) {
 
   if (me) await incrementCheck(me.id);
 
+  // Run OFAC inline — it's free and fast (cached SDN list, ~10ms after warm).
+  const ofac = name ? await checkOfac(name) : { status: "clear" as const };
+  const ofacFields = (() => {
+    if (ofac.status === "match") {
+      return {
+        ofacStatus: "match",
+        ofacMatchCount: ofac.matches.length,
+        ofacMatchesJson: JSON.stringify(ofac.matches),
+        ofacCheckedAt: new Date(),
+      };
+    }
+    if (ofac.status === "error") {
+      return { ofacStatus: "error", ofacCheckedAt: new Date() };
+    }
+    return { ofacStatus: "clear", ofacCheckedAt: new Date() };
+  })();
+
+  // OFAC match upgrades the verdict to DECLINE since being on the SDN list
+  // is disqualifying everywhere.
+  let verdict = xc.verdict;
+  let riskScore = xc.riskScore;
+  if (ofac.status === "match") {
+    verdict = "DECLINE";
+    riskScore = Math.max(riskScore, 95);
+  }
+
   const session = await prisma.checkSession.create({
     data: {
       fullName: name || null,
       licenseId: license || null,
       dateOfBirth: dob ? new Date(dob) : null,
-      verdict: xc.verdict,
-      riskScore: xc.riskScore,
+      verdict,
+      riskScore,
       totalHits: xc.totalHits,
       matchedSources: xc.matchedSources,
       worstSeverity: xc.worstSeverity,
       companyId: me?.id ?? null,
+      ...ofacFields,
     },
   });
 

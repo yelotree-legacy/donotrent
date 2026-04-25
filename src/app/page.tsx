@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { PLANS } from "@/lib/plans";
+import { PLANS, PUBLIC_PLAN_SLUGS } from "@/lib/plans";
 
 export default async function MarketingHome() {
   const [totalEntries, totalSources, totalCompanies] = await Promise.all([
@@ -156,7 +156,7 @@ export default async function MarketingHome() {
             </div>
           </div>
           <div className="grid gap-2">
-            {(["starter", "pro", "business"] as const).map((slug) => {
+            {PUBLIC_PLAN_SLUGS.map((slug) => {
               const p = PLANS[slug];
               const isPopular = p.highlight;
               return (

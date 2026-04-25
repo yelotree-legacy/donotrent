@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireCompany } from "@/lib/auth";
-import { getPlan, checksRemaining, PLANS } from "@/lib/plans";
+import { getPlan, checksRemaining, PLANS, PUBLIC_PLAN_SLUGS } from "@/lib/plans";
 import { isStripeConfigured } from "@/lib/stripe";
 import { OpenPortalButton } from "./OpenPortalButton";
 
@@ -103,8 +103,8 @@ export default async function BillingPage({ searchParams }: { searchParams: { ch
         <header className="border-b border-ink-800 px-5 py-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Compare plans</h2>
         </header>
-        <div className="grid divide-y divide-ink-800 md:grid-cols-2 md:divide-y-0 md:divide-x">
-          {(["starter", "pro", "business"] as const).map((slug) => {
+        <div className="grid divide-y divide-ink-800 md:grid-cols-3 md:divide-y-0 md:divide-x">
+          {PUBLIC_PLAN_SLUGS.map((slug) => {
             const p = PLANS[slug];
             const isCurrent = me.plan === slug;
             return (
