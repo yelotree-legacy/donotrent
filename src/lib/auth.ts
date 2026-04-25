@@ -17,6 +17,21 @@ export async function requireCompany() {
   return co;
 }
 
+// True for admins and verified operators. Unverified operators get read-only
+// access to the platform; they can't post entries, write broker reviews, or
+// create new brokers until an admin approves them.
+export function isVerified(co: { verified: boolean; isAdmin: boolean } | null | undefined): boolean {
+  if (!co) return false;
+  return co.isAdmin || co.verified;
+}
+
+export async function requireVerified() {
+  const me = await requireCompany();
+  if (!me) return null;
+  if (!isVerified(me)) return { unverified: true as const, company: me };
+  return { unverified: false as const, company: me };
+}
+
 export async function hashPassword(plain: string) {
   return bcrypt.hash(plain, 10);
 }

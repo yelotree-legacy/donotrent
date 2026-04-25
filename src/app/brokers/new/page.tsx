@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireCompany } from "@/lib/auth";
+import { requireCompany, isVerified } from "@/lib/auth";
 import { uniqueBrokerSlug, recomputeBrokerAggregates, EXPERIENCE_TYPES } from "@/lib/brokers";
 import { logAudit } from "@/lib/audit";
 
@@ -9,6 +9,7 @@ async function createBrokerWithReview(formData: FormData) {
   "use server";
   const me = await requireCompany();
   if (!me) redirect("/login?next=/brokers/new");
+  if (!isVerified(me)) redirect("/brokers?err=unverified");
 
   const name = String(formData.get("name") || "").trim();
   if (!name) redirect("/brokers/new?err=name");
@@ -62,6 +63,20 @@ export default async function NewBrokerPage({ searchParams }: { searchParams: { 
   const me = await requireCompany();
   if (!me) redirect("/login?next=/brokers/new");
   const err = searchParams.err;
+
+  if (!isVerified(me)) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <div className="card border-amber-500/30 bg-amber-500/5 p-6 text-center">
+          <h1 className="text-xl font-bold text-amber-200">Pending verification</h1>
+          <p className="mt-2 text-sm text-amber-100/80">
+            Your account needs admin approval before you can add brokers or reviews. We'll reach out at <strong>{me.email}</strong> if we need more info.
+          </p>
+          <Link href="/brokers" className="btn-ghost mt-4 inline-flex">Browse brokers</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 fade-in">

@@ -48,7 +48,18 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="card border-amber-500/30 bg-amber-500/5 p-5">
+          <div className="flex h-full flex-col">
+            <div className="flex-1">
+              <h2 className="font-semibold text-amber-200">Operator verifications</h2>
+              <p className="mt-1 text-xs text-amber-100/70">
+                Approve new rental operators before they post.
+              </p>
+            </div>
+            <a href="/dashboard/admin/verifications" className="btn-primary mt-3 justify-center">Open queue →</a>
+          </div>
+        </div>
         <div className="card p-5">
           <div className="flex h-full flex-col">
             <div className="flex-1">

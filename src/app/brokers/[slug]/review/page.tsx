@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireCompany } from "@/lib/auth";
+import { requireCompany, isVerified } from "@/lib/auth";
 import { recomputeBrokerAggregates, EXPERIENCE_TYPES } from "@/lib/brokers";
 import { logAudit } from "@/lib/audit";
 
@@ -9,6 +9,7 @@ async function createReview(formData: FormData) {
   "use server";
   const me = await requireCompany();
   if (!me) redirect("/login");
+  if (!isVerified(me)) redirect("/brokers?err=unverified");
   const brokerId = String(formData.get("brokerId") || "");
   const broker = await prisma.broker.findUnique({ where: { id: brokerId }, select: { id: true, slug: true } });
   if (!broker) redirect("/brokers");
@@ -49,6 +50,20 @@ export default async function NewReviewPage({
   if (!me) redirect(`/login?next=/brokers/${params.slug}/review`);
   const broker = await prisma.broker.findUnique({ where: { slug: params.slug }, select: { id: true, slug: true, name: true } });
   if (!broker) return notFound();
+
+  if (!isVerified(me)) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <div className="card border-amber-500/30 bg-amber-500/5 p-6 text-center">
+          <h1 className="text-xl font-bold text-amber-200">Pending verification</h1>
+          <p className="mt-2 text-sm text-amber-100/80">
+            Your account needs admin approval before you can post broker reviews.
+          </p>
+          <Link href={`/brokers/${broker.slug}`} className="btn-ghost mt-4 inline-flex">Back to {broker.name}</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 fade-in">

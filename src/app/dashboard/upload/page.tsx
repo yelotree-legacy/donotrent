@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireCompany } from "@/lib/auth";
+import { requireCompany, isVerified } from "@/lib/auth";
 import { saveUpload } from "@/lib/upload";
 import { logAudit } from "@/lib/audit";
 import { normalizeLicense, normalizeName, splitName } from "@/lib/normalize";
@@ -10,6 +10,7 @@ async function createEntry(formData: FormData) {
   "use server";
   const me = await requireCompany();
   if (!me) redirect("/login?err=auth");
+  if (!isVerified(me)) redirect("/dashboard/upload?err=unverified");
 
   const fullName = String(formData.get("fullName") || "").trim();
   const licenseId = String(formData.get("licenseId") || "").trim();
@@ -87,6 +88,27 @@ async function createEntry(formData: FormData) {
 }
 
 export default async function UploadPage({ searchParams }: { searchParams: { err?: string } }) {
+  const me = await requireCompany();
+  if (!me) redirect("/login?next=/dashboard/upload");
+
+  // Show a friendly gate for unverified operators instead of a blank page after submit.
+  if (!isVerified(me)) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <div className="card border-amber-500/30 bg-amber-500/5 p-6 text-center">
+          <h1 className="text-xl font-bold text-amber-200">Pending verification</h1>
+          <p className="mt-2 text-sm text-amber-100/80">
+            Your account is awaiting admin approval. Once verified, you can post DNR entries and broker reviews.
+          </p>
+          <p className="mt-3 text-xs text-amber-100/60">
+            Most approvals take under 24 hours. We'll reach out at <strong>{me.email}</strong> if we need more information.
+          </p>
+          <Link href="/dashboard" className="btn-ghost mt-5 inline-flex">Back to dashboard</Link>
+        </div>
+      </div>
+    );
+  }
+
   const categories = await prisma.category.findMany({ orderBy: { label: "asc" } });
   return (
     <div className="space-y-5">
@@ -99,7 +121,9 @@ export default async function UploadPage({ searchParams }: { searchParams: { err
 
       {searchParams.err && (
         <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-          Please complete the required fields (full name + primary reason).
+          {searchParams.err === "unverified"
+            ? "Your account isn't verified yet. Wait for admin approval to post entries."
+            : "Please complete the required fields (full name + primary reason)."}
         </div>
       )}
 

@@ -126,6 +126,26 @@ export default async function DashboardHome({ searchParams }: { searchParams: { 
         </div>
       )}
 
+      {!me.verified && !me.isAdmin && (
+        <div className="rounded-lg border-2 border-amber-500/30 bg-amber-500/10 p-4 fade-in">
+          <div className="flex items-start gap-3">
+            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-amber-500/20 text-amber-300">
+              <svg className="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M8 1.5 14.5 13H1.5L8 1.5Z" strokeLinejoin="round" />
+                <path d="M8 6.5v3.5M8 11.75v.01" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="flex-1 text-sm">
+              <div className="font-semibold text-amber-200">Verification pending</div>
+              <p className="mt-1 text-xs text-amber-100/80">
+                You can search the registry and run Rent Reports right now. To <strong>post DNR entries or broker reviews</strong>,
+                an admin needs to verify your operator status. Most approvals come through within 24 hours — we'll reach out at <strong>{me.email}</strong> if we need more info.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header>
         <h1 className="text-2xl font-bold text-white">Welcome back, {me.name}</h1>
         <p className="mt-1 text-sm text-neutral-400">
