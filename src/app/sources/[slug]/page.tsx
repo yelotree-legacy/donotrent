@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SeverityPill } from "@/components/Pill";
+import { requireCompany } from "@/lib/auth";
 
 export default async function SourceDetailPage({ params }: { params: { slug: string } }) {
+  const me = await requireCompany();
+  if (!me) redirect(`/login?next=/sources/${params.slug}`);
   const source = await prisma.source.findUnique({
     where: { slug: params.slug },
     include: { _count: { select: { entries: true } } },

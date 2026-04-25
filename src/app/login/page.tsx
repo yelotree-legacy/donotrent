@@ -16,11 +16,13 @@ async function loginAction(formData: FormData) {
   session.name = co.name;
   session.isAdmin = co.isAdmin;
   await session.save();
-  redirect("/dashboard");
+  const next = String(formData.get("next") || "").trim();
+  redirect(next && next.startsWith("/") ? next : "/dashboard");
 }
 
-export default function LoginPage({ searchParams }: { searchParams: { err?: string } }) {
+export default function LoginPage({ searchParams }: { searchParams: { err?: string; next?: string } }) {
   const err = searchParams.err;
+  const next = searchParams.next || "";
   return (
     <div className="mx-auto max-w-md py-10">
       <div className="card p-6">
@@ -34,6 +36,7 @@ export default function LoginPage({ searchParams }: { searchParams: { err?: stri
           </div>
         )}
         <form action={loginAction} className="mt-5 space-y-4">
+          {next && <input type="hidden" name="next" value={next} />}
           <div>
             <label className="label">Email</label>
             <input className="input" name="email" type="email" required autoComplete="email" />

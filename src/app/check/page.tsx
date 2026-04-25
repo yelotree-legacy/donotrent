@@ -51,6 +51,8 @@ async function runCheck(formData: FormData) {
 }
 
 export default async function CheckPage({ searchParams }: { searchParams: SP }) {
+  const me = await requireCompany();
+  if (!me) redirect("/login?next=/check");
   const sources = await prisma.source.findMany({ where: { isActive: true }, orderBy: { trustScore: "desc" } });
 
   return (

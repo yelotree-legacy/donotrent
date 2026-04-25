@@ -81,7 +81,7 @@ export function LiveSearch({
     const usp = new URLSearchParams(params.toString());
     if (q) usp.set("q", q); else usp.delete("q");
     if (field && field !== "any") usp.set("field", field); else usp.delete("field");
-    router.push(`/?${usp.toString()}`);
+    router.push(`/search?${usp.toString()}`);
     setOpen(false);
   }
 

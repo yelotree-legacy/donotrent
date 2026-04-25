@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { crossCheck } from "@/lib/cross-check";
 import { isStripeConfigured } from "@/lib/stripe";
 import { looksLikeMatch } from "@/lib/idv";
+import { requireCompany } from "@/lib/auth";
 import { IdvLauncher } from "./IdvLauncher";
 import { IdvStatusPoller } from "./IdvStatusPoller";
 import { CopyButton } from "./CopyButton";
@@ -15,6 +16,8 @@ export default async function CheckSessionPage({
   params: { id: string };
   searchParams: { idv?: string };
 }) {
+  const me = await requireCompany();
+  if (!me) redirect(`/login?next=/check/${params.id}`);
   const session = await prisma.checkSession.findUnique({
     where: { id: params.id },
     include: { company: { select: { name: true } } },

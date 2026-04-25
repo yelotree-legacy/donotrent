@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SeverityPill } from "@/components/Pill";
+import { requireCompany } from "@/lib/auth";
 
 export default async function BrowsePage({ searchParams }: { searchParams: { letter?: string } }) {
+  const me = await requireCompany();
+  if (!me) redirect("/login?next=/browse");
   const letter = (searchParams.letter || "").toLowerCase().slice(0, 1);
 
   const where = letter ? { fullNameNorm: { startsWith: letter } } : {};

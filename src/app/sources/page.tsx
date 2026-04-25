@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireCompany } from "@/lib/auth";
 
 export default async function SourcesPage() {
+  const me = await requireCompany();
+  if (!me) redirect("/login?next=/sources");
   const sources = await prisma.source.findMany({
     where: { isActive: true },
     orderBy: { trustScore: "desc" },

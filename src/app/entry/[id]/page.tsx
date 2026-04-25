@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SeverityPill, StatusPill } from "@/components/Pill";
 import { Lightbox } from "@/components/Lightbox";
@@ -8,6 +8,7 @@ import { crossCheck } from "@/lib/cross-check";
 
 export default async function EntryPage({ params }: { params: { id: string } }) {
   const me = await requireCompany();
+  if (!me) redirect(`/login?next=/entry/${params.id}`);
   const entry = await prisma.dnrEntry.findUnique({
     where: { id: params.id },
     include: {

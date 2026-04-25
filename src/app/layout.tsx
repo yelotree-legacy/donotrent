@@ -32,13 +32,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </span>
             </Link>
             <nav className="flex items-center gap-1 text-sm">
-              <NavLink href="/" label="Search" />
-              <NavLink href="/check" label="Rent Report" />
-              <NavLink href="/browse" label="Browse" />
-              <NavLink href="/sources" label="Sources" />
-              <NavLink href="/pricing" label="Pricing" />
               {signedIn ? (
                 <>
+                  <NavLink href="/search" label="Search" />
+                  <NavLink href="/check" label="Rent Report" />
+                  <NavLink href="/browse" label="Browse" />
+                  <NavLink href="/sources" label="Sources" />
+                  <NavLink href="/pricing" label="Pricing" />
                   <NavLink href="/dashboard" label="Dashboard" />
                   <Link href="/dashboard/upload" className="btn-primary ml-1">
                     <span className="text-base leading-none">+</span> Upload
@@ -47,8 +47,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               ) : (
                 <>
+                  <NavLink href="/" label="Home" />
+                  <NavLink href="/pricing" label="Pricing" />
                   <NavLink href="/login" label="Sign in" />
-                  <Link href="/signup" className="btn-primary ml-1">Register company</Link>
+                  <Link href="/signup" className="btn-primary ml-1">Register</Link>
                 </>
               )}
             </nav>
