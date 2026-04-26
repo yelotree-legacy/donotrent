@@ -39,6 +39,44 @@ const HIT_INCLUDE = {
 };
 
 /**
+ * If the operator typed both a name AND a license id in the same field
+ * (e.g. "Tyler Treasure F5362380"), split them. We then run the search
+ * twice — once with each part — and merge results. This way a fake
+ * license still surfaces a name match, instead of trying to match the
+ * whole string and finding nothing.
+ *
+ * Returns null when there's only one logical token; the caller falls
+ * back to the normal single-field flow.
+ */
+function splitNameAndLicense(query: string): { name: string; license: string } | null {
+  const tokens = query.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return null;
+
+  const licenseTokens: string[] = [];
+  const nameTokens: string[] = [];
+
+  for (const t of tokens) {
+    const stripped = t.replace(/-/g, "");
+    const hasDigit = /\d/.test(stripped);
+    const isAlphaNum = /^[A-Za-z0-9]+$/.test(stripped);
+    const digitCount = (stripped.match(/\d/g) || []).length;
+
+    // License-like: ≥5 chars, alphanumeric only, ≥4 digits
+    if (hasDigit && isAlphaNum && stripped.length >= 5 && digitCount >= 4) {
+      licenseTokens.push(t);
+    } else if (/^[A-Za-z][A-Za-z'.-]{0,30}$/.test(t) || /^(II|III|IV|JR|SR)$/i.test(t)) {
+      nameTokens.push(t);
+    } else {
+      // Ambiguous — bias toward name (safer to over-search names than under-search)
+      nameTokens.push(t);
+    }
+  }
+
+  if (licenseTokens.length === 0 || nameTokens.length === 0) return null;
+  return { name: nameTokens.join(" "), license: licenseTokens[0] };
+}
+
+/**
  * Multi-strategy search:
  *  1. If query looks like a license id (>= 5 chars, mostly alphanumeric) try exact license match first.
  *  2. Exact normalized name match.
@@ -46,6 +84,10 @@ const HIT_INCLUDE = {
  *  4. Substring on normalized name (LIKE '%q%').
  *  5. Search in primary reason text + aliases (LIKE %q% case-insensitive).
  *  6. Fuzzy (Levenshtein) over remaining candidates — bounded to top ALL_LIMIT.
+ *
+ * If field === "any" and the query mixes name + license tokens, we recursively
+ * search each separately and merge — so a fake license number doesn't hide a
+ * legitimate name match.
  *
  * Filters (categories, severity, status, state) intersect with the matched set.
  */
@@ -57,6 +99,26 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
 
   if (!q) {
     return browse(opts, limit, offset);
+  }
+
+  // Smart split: if the query mixes a name and a license id, fan out and merge.
+  if (field === "any") {
+    const split = splitNameAndLicense(q);
+    if (split) {
+      const [byLicense, byName] = await Promise.all([
+        searchEntries({ ...opts, query: split.license, field: "license", limit }),
+        searchEntries({ ...opts, query: split.name, field: "name", limit }),
+      ]);
+      const merged = new Map<string, SearchHit>();
+      // License matches first — they're higher signal when they match.
+      for (const h of byLicense.hits) merged.set(h.id, h);
+      for (const h of byName.hits) {
+        const existing = merged.get(h.id);
+        if (!existing || h.score > existing.score) merged.set(h.id, h);
+      }
+      const all = Array.from(merged.values()).sort((a, b) => b.score - a.score);
+      return { hits: all.slice(offset, offset + limit), total: all.length };
+    }
   }
 
   const qNameNorm = normalizeName(q);
