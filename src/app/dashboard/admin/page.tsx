@@ -15,12 +15,6 @@ export default async function AdminPage() {
     prisma.dispute.count(),
   ]);
 
-  const recentSearches = await prisma.searchLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 25,
-    include: { company: { select: { name: true } } },
-  });
-
   const pendingCompanies = await prisma.company.findMany({
     where: { verified: false },
     orderBy: { createdAt: "desc" },
@@ -96,37 +90,20 @@ export default async function AdminPage() {
         <OfacSyncCard />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="card p-5">
-          <h2 className="font-semibold">Pending verification</h2>
-          {pendingCompanies.length === 0 ? (
-            <p className="mt-2 text-sm text-neutral-400">No pending companies.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-ink-800">
-              {pendingCompanies.map((c) => (
-                <li key={c.id} className="py-2 text-sm">
-                  <div className="font-medium text-white">{c.name}</div>
-                  <div className="text-xs text-neutral-500">{c.email}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="card p-5">
-          <h2 className="font-semibold">Recent searches</h2>
-          <ul className="mt-3 divide-y divide-ink-800 text-sm">
-            {recentSearches.map((s) => (
-              <li key={s.id} className="flex items-center justify-between py-1.5">
-                <span className="font-mono text-neutral-300">"{s.query}"</span>
-                <span className="text-xs text-neutral-500">
-                  {s.field} · {s.resultsCount} hits {s.company ? `· ${s.company.name}` : ""}
-                </span>
+      <div className="card p-5">
+        <h2 className="font-semibold">Pending verification</h2>
+        {pendingCompanies.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-400">No pending companies.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-ink-800">
+            {pendingCompanies.map((c) => (
+              <li key={c.id} className="py-2 text-sm">
+                <div className="font-medium text-white">{c.name}</div>
+                <div className="text-xs text-neutral-500">{c.email}</div>
               </li>
             ))}
-            {recentSearches.length === 0 && <li className="py-2 text-sm text-neutral-400">No searches yet.</li>}
           </ul>
-        </div>
+        )}
       </div>
     </div>
   );

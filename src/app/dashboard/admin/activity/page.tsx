@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireCompany } from "@/lib/auth";
 import { SeverityPill } from "@/components/Pill";
 
-type Tab = "dnr" | "brokers" | "reviews";
+type Tab = "dnr" | "brokers" | "reviews" | "searches";
 
 export default async function AdminActivityPage({
   searchParams,
@@ -16,11 +16,12 @@ export default async function AdminActivityPage({
 
   const tab: Tab = (searchParams.tab as Tab) || "dnr";
 
-  const [counts, entries, brokers, reviews] = await Promise.all([
+  const [counts, entries, brokers, reviews, searches] = await Promise.all([
     Promise.all([
       prisma.dnrEntry.count(),
       prisma.broker.count(),
       prisma.brokerReview.count(),
+      prisma.searchLog.count(),
     ]),
     tab === "dnr"
       ? prisma.dnrEntry.findMany({
@@ -57,9 +58,16 @@ export default async function AdminActivityPage({
           },
         })
       : Promise.resolve([]),
+    tab === "searches"
+      ? prisma.searchLog.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          include: { company: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
   ]);
 
-  const [entryCount, brokerCount, reviewCount] = counts;
+  const [entryCount, brokerCount, reviewCount, searchCount] = counts;
 
   return (
     <div className="space-y-6 fade-in">
@@ -76,11 +84,13 @@ export default async function AdminActivityPage({
         <TabLink tab="dnr" current={tab} label="DNR entries" count={entryCount} />
         <TabLink tab="brokers" current={tab} label="Brokers" count={brokerCount} />
         <TabLink tab="reviews" current={tab} label="Broker reviews" count={reviewCount} />
+        <TabLink tab="searches" current={tab} label="Searches" count={searchCount} />
       </div>
 
       {tab === "dnr" && <DnrFeed entries={entries as any[]} />}
       {tab === "brokers" && <BrokerFeed brokers={brokers as any[]} />}
       {tab === "reviews" && <ReviewFeed reviews={reviews as any[]} />}
+      {tab === "searches" && <SearchFeed searches={searches as any[]} />}
     </div>
   );
 }
@@ -220,6 +230,40 @@ function ReviewFeed({ reviews }: { reviews: any[] }) {
                 </div>
               </div>
             </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SearchFeed({ searches }: { searches: any[] }) {
+  if (searches.length === 0) {
+    return <div className="card p-8 text-center text-sm text-neutral-400">No searches yet.</div>;
+  }
+  return (
+    <div className="card overflow-hidden">
+      <ul className="divide-y divide-ink-800">
+        {searches.map((s) => (
+          <li key={s.id} className="px-5 py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-sm text-white">"{s.query}"</span>
+                  <span className="pill bg-ink-800 text-neutral-400 ring-1 ring-inset ring-ink-700">{s.field}</span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-neutral-500">
+                  {s.company ? s.company.name : <em className="text-neutral-600">anonymous</em>}
+                  {s.ip ? ` · ${s.ip}` : ""}
+                  {" · "}{relTime(s.createdAt)}
+                </div>
+              </div>
+              <div className="shrink-0 text-right text-xs">
+                <div className={`font-semibold ${s.resultsCount > 0 ? "text-amber-300" : "text-emerald-300"}`}>
+                  {s.resultsCount} {s.resultsCount === 1 ? "hit" : "hits"}
+                </div>
+              </div>
+            </div>
           </li>
         ))}
       </ul>
