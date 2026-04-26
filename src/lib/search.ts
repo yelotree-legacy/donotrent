@@ -102,22 +102,27 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
   }
 
   // Smart split: if the query mixes a name and a license id, fan out and merge.
+  // Wrapped in try/catch so a logic bug here can never 500 the whole search —
+  // worst case we fall back to the single-string flow below.
   if (field === "any") {
-    const split = splitNameAndLicense(q);
-    if (split) {
-      const [byLicense, byName] = await Promise.all([
-        searchEntries({ ...opts, query: split.license, field: "license", limit }),
-        searchEntries({ ...opts, query: split.name, field: "name", limit }),
-      ]);
-      const merged = new Map<string, SearchHit>();
-      // License matches first — they're higher signal when they match.
-      for (const h of byLicense.hits) merged.set(h.id, h);
-      for (const h of byName.hits) {
-        const existing = merged.get(h.id);
-        if (!existing || h.score > existing.score) merged.set(h.id, h);
+    try {
+      const split = splitNameAndLicense(q);
+      if (split) {
+        const [byLicense, byName] = await Promise.all([
+          searchEntries({ ...opts, query: split.license, field: "license", limit }),
+          searchEntries({ ...opts, query: split.name, field: "name", limit }),
+        ]);
+        const merged = new Map<string, SearchHit>();
+        for (const h of byLicense.hits) merged.set(h.id, h);
+        for (const h of byName.hits) {
+          const existing = merged.get(h.id);
+          if (!existing || h.score > existing.score) merged.set(h.id, h);
+        }
+        const all = Array.from(merged.values()).sort((a, b) => b.score - a.score);
+        return { hits: all.slice(offset, offset + limit), total: all.length };
       }
-      const all = Array.from(merged.values()).sort((a, b) => b.score - a.score);
-      return { hits: all.slice(offset, offset + limit), total: all.length };
+    } catch (e) {
+      console.error("[searchEntries] split path failed, falling back to single-query flow:", e);
     }
   }
 
@@ -179,6 +184,31 @@ export async function searchEntries(opts: SearchOptions): Promise<{ hits: Search
       take: limit * 2,
     });
     push(rows, "substring", (r) => scoreName(qNameNorm, r.fullNameNorm));
+  }
+
+  // Strategy 4b: multi-token name search.
+  // 'Tyler Treasure' should match 'Tyler Darrell Treasure' even though the
+  // concatenated normalized form misses. We require ALL tokens to appear
+  // in fullNameNorm — handles middle names, suffixes, and word-order
+  // changes (since we just check containment per token).
+  if ((field === "any" || field === "name")) {
+    const nameTokens = q
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .split(/\s+/)
+      .filter((t) => /^[a-z]+$/.test(t) && t.length >= 2);
+    if (nameTokens.length >= 2) {
+      const rows = await prisma.dnrEntry.findMany({
+        where: {
+          ...baseFilter,
+          AND: nameTokens.map((t) => ({ fullNameNorm: { contains: t } })),
+        },
+        include: HIT_INCLUDE,
+        take: limit * 2,
+      });
+      push(rows, "substring", () => 750); // higher than fuzzy, lower than prefix
+    }
   }
 
   // Strategy 5: aliases / reason text (case-insensitive contains).
