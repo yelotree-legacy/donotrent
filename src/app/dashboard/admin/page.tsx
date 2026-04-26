@@ -48,7 +48,7 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="card border-amber-500/30 bg-amber-500/5 p-5">
           <div className="flex h-full flex-col">
             <div className="flex-1">
@@ -58,6 +58,17 @@ export default async function AdminPage() {
               </p>
             </div>
             <a href="/dashboard/admin/verifications" className="btn-primary mt-3 justify-center">Open queue →</a>
+          </div>
+        </div>
+        <div className="card border-blue-500/30 bg-blue-500/5 p-5">
+          <div className="flex h-full flex-col">
+            <div className="flex-1">
+              <h2 className="font-semibold text-blue-200">Network activity</h2>
+              <p className="mt-1 text-xs text-blue-100/70">
+                Live feed of recently added DNR entries, brokers, and reviews.
+              </p>
+            </div>
+            <a href="/dashboard/admin/activity" className="btn-primary mt-3 justify-center">Open feed →</a>
           </div>
         </div>
         <div className="card p-5">
