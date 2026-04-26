@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireCompany } from "@/lib/auth";
 
 export default async function MyReportsPage() {
-  const me = (await requireCompany())!;
+  const me = await requireCompany();
+  if (!me) redirect("/login?err=auth&next=/dashboard/reports");
   const reports = await prisma.report.findMany({
     where: { reportingCoId: me.id },
     orderBy: { createdAt: "desc" },

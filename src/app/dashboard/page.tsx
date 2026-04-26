@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireCompany } from "@/lib/auth";
 import { SeverityPill } from "@/components/Pill";
@@ -6,7 +7,11 @@ import { Sparkline } from "@/components/Sparkline";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 export default async function DashboardHome({ searchParams }: { searchParams: { welcome?: string } }) {
-  const me = (await requireCompany())!;
+  // Don't rely on the parent layout's redirect — Next 14 renders layouts and
+  // pages in parallel, so a stale-session render can dereference null here
+  // before the layout's redirect fires, which 500s the page.
+  const me = await requireCompany();
+  if (!me) redirect("/login?err=auth&next=/dashboard");
 
   // Pull a wide-but-bounded set of dashboard data in parallel.
   const periodStart = me.currentPeriodStart || new Date(Date.now() - 30 * 86400_000);

@@ -50,7 +50,8 @@ async function updateEntry(formData: FormData) {
 }
 
 export default async function EditEntryPage({ params }: { params: { id: string } }) {
-  const me = (await requireCompany())!;
+  const me = await requireCompany();
+  if (!me) redirect(`/login?err=auth&next=/dashboard/edit/${params.id}`);
   const entry = await prisma.dnrEntry.findUnique({ where: { id: params.id } });
   if (!entry) return notFound();
   if (entry.createdById !== me.id && !me.isAdmin) {
